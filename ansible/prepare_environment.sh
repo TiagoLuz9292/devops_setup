@@ -1,0 +1,1 @@
+ansible-playbook -i ./aws_ec2_inventory.py prepare_environment.yml
