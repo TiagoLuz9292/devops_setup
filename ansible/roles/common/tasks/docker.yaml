@@ -1,0 +1,69 @@
+---
+- name: Add Docker GPG key on Debian-based systems
+  when: ansible_os_family == 'Debian'
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Install dependencies on Amazon Linux 2
+  when: ansible_distribution == 'Amazon' and ansible_distribution_version.startswith('2')
+  yum:
+    name: yum-utils
+    state: present
+
+- name: Add Docker repository on Amazon Linux 2
+  when: ansible_distribution == 'Amazon' and ansible_distribution_version.startswith('2')
+  command: amazon-linux-extras install -y docker
+
+- name: Start Docker service on Amazon Linux 2
+  when: ansible_distribution == 'Amazon' and ansible_distribution_version.startswith('2')
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Add Docker repository on CentOS
+  when: ansible_distribution == 'CentOS'
+  yum_repository:
+    name: docker-ce
+    description: Docker CE Repository
+    baseurl: https://download.docker.com/linux/centos/7/x86_64/stable
+    gpgcheck: yes
+    enabled: yes
+    gpgkey: https://download.docker.com/linux/centos/gpg
+
+- name: Add Docker repository on Debian-based systems
+  when: ansible_os_family == 'Debian'
+  apt_repository:
+    repo: deb https://download.docker.com/linux/ubuntu bionic stable
+    state: present
+
+- name: Install Docker on Debian-based systems
+  when: ansible_os_family == 'Debian'
+  apt:
+    name: docker-ce
+    state: present
+    update_cache: yes
+
+- name: Install Docker on CentOS using yum
+  when: ansible_distribution == 'CentOS'
+  yum:
+    name: docker-ce
+    state: present
+
+- name: Start Docker service
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Add ec2-user to docker group
+  user:
+    name: ec2-user
+    groups: docker
+    append: yes
+
+- name: Restart Docker service
+  service:
+    name: docker
+    state: restarted

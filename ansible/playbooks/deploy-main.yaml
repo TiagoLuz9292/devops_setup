@@ -1,0 +1,21 @@
+---
+- name: Deploy Docker Containers
+  hosts: Docker
+  become: yes
+  tasks:
+    - name: Copy deploy.sh script to the target servers
+      copy:
+        src: /root/project/devops/ansible/deploy-deploy_script.sh
+        dest: /home/ec2-user/deploy.sh
+        mode: '0755'
+
+    - name: Execute deploy.sh script
+      shell: |
+        /home/ec2-user/deploy.sh {{ app_name }} {{ dockerhub_repo }} {{ tag }} {{ service }} {{ config_file }}
+      args:
+        executable: /bin/bash
+
+    - name: Remove deploy.sh script from the target servers
+      file:
+        path: /home/ec2-user/deploy.sh
+        state: absent

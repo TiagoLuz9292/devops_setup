@@ -1,0 +1,8 @@
+---
+- name: Install Docker on EC2 instances
+  hosts: all
+  become: yes
+  gather_facts: yes
+  roles:
+    - role: common
+      tasks_from: docker.yml

@@ -1,0 +1,1 @@
+ansible-playbook -i ./aws_ec2_inventory.py playbooks/deploy-deploy_script.yaml

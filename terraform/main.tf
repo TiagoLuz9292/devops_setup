@@ -65,7 +65,7 @@ resource "aws_security_group" "instance" {
 }
 
 resource "aws_instance" "web1" {
-  ami           = "ami-04c8070ff1870a99b"  # Change to an appropriate AMI ID for your region
+  ami           = "ami-01b1be742d950fb7f"  # Change to an appropriate AMI ID for your region
   instance_type = var.instance_type
   subnet_id     = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.instance.id]
@@ -78,7 +78,7 @@ resource "aws_instance" "web1" {
 }
 
 resource "aws_instance" "web2" {
-  ami           = "ami-04c8070ff1870a99b"  # Change to an appropriate AMI ID for your region
+  ami           = "ami-01b1be742d950fb7f"  # Change to an appropriate AMI ID for your region
   instance_type = var.instance_type
   subnet_id     = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.instance.id]

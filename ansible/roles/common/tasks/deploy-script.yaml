@@ -1,0 +1,12 @@
+---
+- name: Copy deploy.sh script to the target servers
+  copy:
+    src: /root/project/devops/ansible/deploy.sh
+    dest: /home/ec2-user/deploy.sh
+    mode: '0755'
+
+- name: Ensure deploy.sh script is executable
+  file:
+    path: /home/ec2-user/deploy.sh
+    mode: '0755'
+    state: file
