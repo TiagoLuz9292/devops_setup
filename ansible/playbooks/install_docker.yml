@@ -1,8 +1,36 @@
 ---
 - name: Install Docker on EC2 instances
   hosts: all
-  become: yes
-  gather_facts: yes
-  roles:
-    - role: common
-      tasks_from: docker.yml
+  become: true
+  tasks:
+    - name: Uninstall conflicting curl-minimal package
+      yum:
+        name: curl-minimal
+        state: absent
+      ignore_errors: yes
+
+    - name: Install curl package
+      yum:
+        name: curl
+        state: present
+      ignore_errors: yes
+
+    - name: Install Docker
+      yum:
+        name: docker
+        state: present
+      notify:
+        - Start Docker
+
+    - name: Add ec2-user to the docker group
+      user:
+        name: ec2-user
+        groups: docker
+        append: yes
+
+  handlers:
+    - name: Start Docker
+      service:
+        name: docker
+        state: started
+        enabled: true

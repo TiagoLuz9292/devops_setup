@@ -9,6 +9,16 @@ pipeline {
     }
 
     stages {
+        stage('Verify Environment') {
+            steps {
+                script {
+                    // Print environment variables for debugging
+                    sh 'printenv | grep AWS'
+                    // Print contents of AWS credentials file for debugging
+                    sh 'cat $AWS_SHARED_CREDENTIALS_FILE'
+                }
+            }
+        }
         stage('Prepare Environment') {
             steps {
                 script {
@@ -54,9 +64,9 @@ pipeline {
                     extraVars: [
                         app_name: 'solana-spl-momentum-scanner',
                         dockerhub_repo: 'tiagoluz92/solana-spl-momentum-scanner',
-                        tag: 'latest',
+                        tag: '26', // Ensure the tag matches your requirements
                         service: 'frontend',
-                        config_file: '/root/project/devops/applications/solana-spl-momentum-scanner/config.json'
+                        config_file: '/home/ec2-user/applications/solana-spl-momentum-scanner/config.json'
                     ],
                     credentialsId: 'ec2-instance-key' // Update with the correct ID
                 )
@@ -70,9 +80,9 @@ pipeline {
                     extraVars: [
                         app_name: 'solana-spl-momentum-scanner',
                         dockerhub_repo: 'tiagoluz92/solana-spl-momentum-scanner',
-                        tag: 'latest',
+                        tag: '26', // Ensure the tag matches your requirements
                         service: 'backend',
-                        config_file: '/root/project/devops/applications/solana-spl-momentum-scanner/config.json'
+                        config_file: '/home/ec2-user/applications/solana-spl-momentum-scanner/config.json'
                     ],
                     credentialsId: 'ec2-instance-key' // Update with the correct ID
                 )

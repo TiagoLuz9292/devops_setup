@@ -22,9 +22,20 @@ echo "Deploying $APP_NAME-$SERVICE using image $DOCKERHUB_REPO-$SERVICE:$TAG on 
 
 docker pull $DOCKERHUB_REPO-$SERVICE:$TAG
 
-docker stop ${APP_NAME}-$SERVICE || true
-docker rm ${APP_NAME}-$SERVICE || true
+if [ $? -ne 0 ]; then
+    echo "Failed to pull the Docker image"
+    exit 1
+fi
+
+# Stop and remove the container if it exists
+docker stop ${APP_NAME}-$SERVICE || echo "No existing container to stop"
+docker rm ${APP_NAME}-$SERVICE || echo "No existing container to remove"
 
 docker run -d --name ${APP_NAME}-$SERVICE -p $PORT:$PORT $DOCKERHUB_REPO-$SERVICE:$TAG
 
-echo "$APP_NAME-$SERVICE deployed successfully!"
+if [ $? -eq 0 ]; then
+    echo "$APP_NAME-$SERVICE deployed successfully!"
+else
+    echo "Failed to deploy $APP_NAME-$SERVICE"
+    exit 1
+fi
