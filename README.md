@@ -79,27 +79,25 @@ Backend: A FastAPI application that processes the input and returns price data a
 The application repository contains the source code for the frontend and backend services. It also contains the Jenkinsfile used to build and push Docker images.
 
 6. Dynamic Inventory Script
-The aws_ec2_inventory.py script dynamically generates an inventory of running EC2 instances. It uses AWS credentials configured on the Jenkins server to access AWS and retrieve instance information.
+The aws_ec2_inventory.py script dynamically generates an inventory of running EC2 instances, and it can use filters to work with the instance tags. It uses AWS credentials configured on the Jenkins server to access AWS and retrieve instance information.
 
 Deployment Process
-Build and Push Docker Images:
+-Build and Push Docker Images:
 
 Jenkins pulls the latest source code from GitHub.
 Jenkins builds the Docker images for the frontend and backend services.
 Jenkins pushes the images to Docker Hub.
-Deploy Docker Images to EC2:
+
+-Deploy Docker Images to EC2:
 
 Jenkins triggers the deployment job.
 Ansible playbooks are executed to set up the environment on EC2 instances, install Docker, and deploy the application.
-The deploy.sh script is copied to the EC2 instances and executed to pull the latest Docker images from Docker Hub and run them.
-Configuration Files
-config.json
-The configuration file for the application contains port information and other necessary configurations.
+
+The Docker images are pulled from Docker Hub into the EC2 instances;
+The deploy.sh script is copied to the EC2 instances and executed to pull the latest Docker images from Docker Hub and run them with the porst configured on Configuration File config.json
 
 Example:
 
-json
-Copiar código
 {
   "frontend": {
     "port": 3000
@@ -109,9 +107,30 @@ Copiar código
   }
 }
 Jenkinsfile
-The Jenkinsfile in the applications/solana-spl-momentum-scanner/ directory is used to define the deployment pipeline for the application.
+The Jenkinsfile in the applications/solana-spl-momentum-scanner/ directory is used to define the deployment pipeline for the application. It will probably be moved into the app source code repo in the future.
 
 Conclusion
 This documentation provides a high-level overview of the CI/CD pipeline setup using Jenkins, Ansible, Terraform, and Docker. The system automates the process of building, pushing, and deploying Docker images for a web application to AWS EC2 instances.
 
 For more detailed information, refer to the individual playbooks, scripts, and configuration files mentioned in this document.
+
+
+--------------------------------------------
+
+Important commands
+
+
+  docker run -d \
+  --name jenkins \
+  --group-add $(getent group docker | cut -d: -f3) \
+  -p 8080:8080 \
+  -p 50000:50000 \
+  -v /root/aws_credentials:/root/.aws \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /home/tluz/jenkins_home:/var/jenkins_home \
+  -v /root/project:/root/project \
+  --user root \
+  custom-jenkins
+
+
+echo 'export ANSIBLE_PRIVATE_KEY_FILE=/root/.ssh/my-key-pair' >> ~/.bashrc
