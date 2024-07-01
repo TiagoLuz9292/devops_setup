@@ -3,6 +3,49 @@
   hosts: all
   become: yes
   gather_facts: yes
-  roles:
-    - role: common
-      tasks_from: environment.yml
+
+  tasks:
+    - name: Ensure python3 is installed on RedHat-based systems using yum
+      when: ansible_os_family == 'RedHat'
+      yum:
+        name: python3
+        state: present
+
+    - name: Ensure python3-pip is installed on RedHat-based systems using yum
+      when: ansible_os_family == 'RedHat'
+      yum:
+        name: python3-pip
+        state: present
+
+    - name: Install python3-apt package on Debian-based systems
+      when: ansible_os_family == 'Debian'
+      apt:
+        name: python3-apt
+        state: present
+
+    - name: Install pip3 and necessary Python packages using shell
+      when: ansible_os_family == 'RedHat'
+      shell: |
+        python3 -m ensurepip --upgrade
+        PIP_PATH=$(command -v pip3 || echo "/usr/local/bin/pip3")
+        $PIP_PATH install boto3 ansible
+
+    - name: Update and install prerequisites on RedHat-based systems using yum
+      when: ansible_os_family == 'RedHat'
+      yum:
+        name:
+          - yum-utils
+          - device-mapper-persistent-data
+          - lvm2
+        state: present
+
+    - name: Update and install prerequisites on Debian-based systems using apt
+      when: ansible_os_family == 'Debian'
+      apt:
+        update_cache: yes
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        state: present
