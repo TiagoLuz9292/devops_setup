@@ -1,0 +1,55 @@
+---
+- name: Uninstall K3s and clean up
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Stop and disable k3s service (master)
+      systemd:
+        name: k3s
+        state: stopped
+        enabled: no
+      ignore_errors: yes
+      when: "'master' in group_names"
+
+    - name: Stop and disable k3s-agent service (worker)
+      systemd:
+        name: k3s-agent
+        state: stopped
+        enabled: no
+      ignore_errors: yes
+      when: "'workers' in group_names"
+
+    - name: Run K3s uninstall script (master)
+      shell: /usr/local/bin/k3s-uninstall.sh
+      ignore_errors: yes
+      when: "'master' in group_names"
+
+    - name: Run K3s uninstall script (worker)
+      shell: /usr/local/bin/k3s-agent-uninstall.sh
+      ignore_errors: yes
+      when: "'workers' in group_names"
+
+    - name: Remove K3s directories
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/rancher
+        - /var/lib/rancher
+        - /var/lib/kubelet
+        - /var/lib/kubeproxy
+        - /var/lib/etcd
+        - /run/k3s
+        - /run/flannel
+      ignore_errors: yes
+
+    - name: Flush iptables rules
+      command: iptables -F
+      ignore_errors: yes
+
+    - name: Remove iptables rules file
+      file:
+        path: /etc/iptables/rules.v4
+        state: absent
+      ignore_errors: yes

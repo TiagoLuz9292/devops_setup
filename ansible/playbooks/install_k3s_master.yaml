@@ -1,0 +1,61 @@
+---
+- name: Install and setup k3s master node
+  hosts: master
+  become: yes
+
+  vars:
+    k3s_version: "v1.29.6+k3s1"
+
+  tasks:
+    - name: Copy k3s installation script to remote server
+      copy:
+        src: /root/project/devops/kubernetes/install_k3s_master.sh
+        dest: /tmp/install_k3s_master.sh
+        mode: '0755'
+
+    - name: Run k3s installation script
+      shell: /tmp/install_k3s_master.sh
+      args:
+        executable: /bin/bash
+
+    - name: Ensure k3s is running
+      shell: systemctl is-active --quiet k3s && echo k3s is running || echo k3s is not running
+      register: k3s_status
+      ignore_errors: true
+
+    - name: Debug k3s status
+      debug:
+        var: k3s_status.stdout
+
+    - name: Check k3s service
+      systemd:
+        name: k3s
+        state: started
+        enabled: yes
+      when: k3s_status.stdout == "k3s is not running"
+
+    - name: Check for k3s node token file
+      stat:
+        path: /var/lib/rancher/k3s/server/node-token
+      register: node_token_file
+
+    - name: Get the k3s node token
+      command: cat /var/lib/rancher/k3s/server/node-token
+      register: node_token
+      when: node_token_file.stat.exists
+
+    - name: Display the node token
+      debug:
+        msg: "k3s node token: {{ node_token.stdout }}"
+
+    - name: Configure iptables to open port 6443
+      iptables:
+        chain: INPUT
+        protocol: tcp
+        destination_port: 6443
+        jump: ACCEPT
+        comment: "Allow K3s API traffic"
+        state: present
+
+    - name: Save iptables rules
+      command: iptables-save > /etc/iptables/rules.v4

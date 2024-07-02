@@ -1,0 +1,48 @@
+---
+- name: Install and setup k3s worker node
+  hosts: worker
+  become: yes
+
+  vars:
+    master_ip: "13.60.97.18"  # Replace with your master node's IP address
+    node_token: "K1089a16017f8f68f744627d349d79254f43dfbd71a67e54039df733995cd6830bb::server:89f655ec919d6537ad6dc86c7b3e0383"  # Replace with the token retrieved from the master node
+
+  tasks:
+    - name: Copy k3s installation script to remote server
+      copy:
+        src: /root/project/devops/kubernetes/install_k3s_worker.sh
+        dest: /tmp/install_k3s_worker.sh
+        mode: '0755'
+
+    - name: Run k3s installation script
+      shell: /tmp/install_k3s_worker.sh {{ master_ip }} {{ node_token }}
+      args:
+        executable: /bin/bash
+
+    - name: Ensure k3s agent is running
+      shell: systemctl is-active --quiet k3s-agent && echo k3s-agent is running || echo k3s-agent is not running
+      register: k3s_agent_status
+      ignore_errors: true
+
+    - name: Debug k3s agent status
+      debug:
+        var: k3s_agent_status.stdout
+
+    - name: Check k3s agent service
+      systemd:
+        name: k3s-agent
+        state: started
+        enabled: yes
+      when: k3s_agent_status.stdout == "k3s-agent is not running"
+
+    - name: Configure iptables to open port 6443
+      iptables:
+        chain: INPUT
+        protocol: tcp
+        destination_port: 6443
+        jump: ACCEPT
+        comment: "Allow K3s API traffic"
+        state: present
+
+    - name: Save iptables rules
+      command: iptables-save > /etc/iptables/rules.v4

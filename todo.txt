@@ -4,7 +4,7 @@ python3 aws_ec2_inventory.py
 
 
 
-echo 'export ANSIBLE_PRIVATE_KEY_FILE=/root/.ssh/my-key-pair' >> ~/.bashrc
+
 
 clean jenkins directory
 
@@ -27,26 +27,4 @@ root@localhost:/home/tluz/jenkins_home# sudo rm -rf /home/tluz/jenkins_home/work
   custom-jenkins
 
 
-  docker run -d \
-  --name jenkins \
-  -p 8080:8080 -p 50000:50000 \
-  -v /var/jenkins_home:/var/jenkins_home \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v /root/project:/root/project \
-  jenkins/jenkins:lts
-
-  docker run -d --name jenkins \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v /home/tluz/jenkins_home:/var/jenkins_home \
-  -v /root/project:/root/project \
-  -p 8080:8080 -p 50000:50000 \
-  --user root \
-  custom-jenkins
-
-  docker run -d --name jenkins \
-  
-  -v /root/project/devops/:/root/project/devops/ \
-  -v /home/tluz/jenkins_home:/var/jenkins_home \ \
-  -p 8080:8080 -p 50000:50000 \
-  --user root \
-  custom-jenkins
+echo 'export ANSIBLE_PRIVATE_KEY_FILE=/root/.ssh/my-key-pair' >> ~/.bashrc
