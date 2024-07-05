@@ -39,23 +39,20 @@
         path: /var/lib/rancher/k3s/server/node-token
       register: node_token_file
 
+    - name: Debug node token file existence
+      debug:
+        var: node_token_file
+
     - name: Get the k3s node token
       command: cat /var/lib/rancher/k3s/server/node-token
       register: node_token
       when: node_token_file.stat.exists
 
+    - name: Debug node token
+      debug:
+        var: node_token
+
     - name: Display the node token
       debug:
         msg: "k3s node token: {{ node_token.stdout }}"
-
-    - name: Configure iptables to open port 6443
-      iptables:
-        chain: INPUT
-        protocol: tcp
-        destination_port: 6443
-        jump: ACCEPT
-        comment: "Allow K3s API traffic"
-        state: present
-
-    - name: Save iptables rules
-      command: iptables-save > /etc/iptables/rules.v4
+      when: node_token is defined

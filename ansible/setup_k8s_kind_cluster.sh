@@ -1,0 +1,1 @@
+ansible-playbook -i /root/project/devops/kubernetes/inventory playbooks/setup_k8s_kind_cluster.yaml

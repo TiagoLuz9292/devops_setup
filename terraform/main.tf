@@ -1,3 +1,5 @@
+# VPC (Virtual Private Cloud)
+# Creates a VPC with a specified CIDR block.
 resource "aws_vpc" "main" {
   cidr_block = var.vpc_cidr
 
@@ -6,9 +8,11 @@ resource "aws_vpc" "main" {
   }
 }
 
+# Subnet
+# Creates a public subnet within the VPC.
 resource "aws_subnet" "public" {
-  vpc_id     = aws_vpc.main.id
-  cidr_block = var.subnet_cidr
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = var.subnet_cidr
   map_public_ip_on_launch = true
 
   tags = {
@@ -16,6 +20,8 @@ resource "aws_subnet" "public" {
   }
 }
 
+# Internet Gateway
+# Creates an internet gateway to allow internet access to the instances.
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
 
@@ -24,6 +30,8 @@ resource "aws_internet_gateway" "igw" {
   }
 }
 
+# Route Table
+# Creates a route table and a route to the internet gateway.
 resource "aws_route_table" "routetable" {
   vpc_id = aws_vpc.main.id
 
@@ -37,14 +45,19 @@ resource "aws_route_table" "routetable" {
   }
 }
 
+# Route Table Association
+# Associates the route table with the public subnet.
 resource "aws_route_table_association" "a" {
   subnet_id      = aws_subnet.public.id
   route_table_id = aws_route_table.routetable.id
 }
 
+# Security Group
+# Creates a security group with rules to allow necessary traffic for Kubernetes.
 resource "aws_security_group" "instance" {
   vpc_id = aws_vpc.main.id
 
+  # Allow SSH access
   ingress {
     from_port   = 22
     to_port     = 22
@@ -52,6 +65,46 @@ resource "aws_security_group" "instance" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Allow Kubernetes API server access
+  ingress {
+    from_port   = 6443
+    to_port     = 6443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Allow etcd server client API access
+  ingress {
+    from_port   = 2379
+    to_port     = 2380
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Allow kubelet API access
+  ingress {
+    from_port   = 10250
+    to_port     = 10250
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Allow Flannel (UDP) access
+  ingress {
+    from_port   = 8285
+    to_port     = 8285
+    protocol    = "udp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 8472
+    to_port     = 8472
+    protocol    = "udp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Allow all outbound traffic
   egress {
     from_port   = 0
     to_port     = 0
@@ -64,52 +117,57 @@ resource "aws_security_group" "instance" {
   }
 }
 
-resource "aws_instance" "web1" {
+# EC2 Instances for Master and Workers
+# Creates EC2 instances for the Kubernetes master and worker nodes.
+
+# Master Node
+resource "aws_instance" "master" {
   ami           = "ami-01b1be742d950fb7f"  # Change to an appropriate AMI ID for your region
   instance_type = var.instance_type
   subnet_id     = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.instance.id]
   key_name      = var.key_name
+  associate_public_ip_address = true
 
   tags = {
-    Name  = "WebServer1"
-    Group = "Docker"
+    Name  = "K8s-Master"
+    Group = "Kubernetes"
   }
 }
 
-resource "aws_instance" "web2" {
+# Allocate Elastic IP for Master Node
+resource "aws_eip" "master_eip" {
+  instance = aws_instance.master.id
+}
+
+# Worker Nodes
+resource "aws_instance" "worker" {
+  count         = 2
   ami           = "ami-01b1be742d950fb7f"  # Change to an appropriate AMI ID for your region
   instance_type = var.instance_type
   subnet_id     = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.instance.id]
   key_name      = var.key_name
+  associate_public_ip_address = true
 
   tags = {
-    Name  = "WebServer2"
-    Group = "Docker"
+    Name  = "K8s-Worker-${count.index}"
+    Group = "Kubernetes"
   }
 }
 
-
-resource "aws_s3_bucket" "app_bucket" {
-  bucket = "my-app-bucket-${lower(random_string.bucket_suffix.result)}"
-  force_destroy = true  # Optional: to delete non-empty buckets
-
-  tags = {
-    Name        = "My app bucket"
-    Environment = "Dev"
-  }
+# Allocate Elastic IPs for Worker Nodes
+resource "aws_eip" "worker_eip" {
+  count    = 2
+  instance = aws_instance.worker.*.id[count.index]
 }
 
-resource "aws_s3_bucket_ownership_controls" "app_bucket_ownership" {
-  bucket = aws_s3_bucket.app_bucket.bucket
-
-  rule {
-    object_ownership = "BucketOwnerEnforced"
-  }
+# Outputs
+# Provides output values for the VPC, subnet, and instances.
+output "master_public_ip" {
+  value = aws_eip.master_eip.public_ip
 }
 
-resource "random_string" "bucket_suffix" {
-  length  = 6
-  special = false
+output "worker_public_ips" {
+  value = [for eip in aws_eip.worker_eip : eip.public_ip]
 }

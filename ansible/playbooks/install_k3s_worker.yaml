@@ -4,8 +4,8 @@
   become: yes
 
   vars:
-    master_ip: "13.60.97.18"  # Replace with your master node's IP address
-    node_token: "K1089a16017f8f68f744627d349d79254f43dfbd71a67e54039df733995cd6830bb::server:89f655ec919d6537ad6dc86c7b3e0383"  # Replace with the token retrieved from the master node
+    master_ip: "13.51.102.35"  # Replace with your master node's IP address
+    node_token: "K108f79877ab47e0466522e56cbae12b7c571133ffc23d5fa1fbc777b949051de57::server:7e33a6a791116f3f1411aca243e6851e"  # Replace with the token retrieved from the master node
 
   tasks:
     - name: Copy k3s installation script to remote server
@@ -34,15 +34,3 @@
         state: started
         enabled: yes
       when: k3s_agent_status.stdout == "k3s-agent is not running"
-
-    - name: Configure iptables to open port 6443
-      iptables:
-        chain: INPUT
-        protocol: tcp
-        destination_port: 6443
-        jump: ACCEPT
-        comment: "Allow K3s API traffic"
-        state: present
-
-    - name: Save iptables rules
-      command: iptables-save > /etc/iptables/rules.v4

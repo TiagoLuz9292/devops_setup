@@ -1,0 +1,237 @@
+---
+- name: Install Kind and Kubectl
+  hosts: master
+  become: yes
+  vars:
+    public_ip: "{{ hostvars['master'].ansible_host }}"
+  tasks:
+    - name: Install dependencies on Debian-based systems
+      when: ansible_os_family == 'Debian'
+      apt:
+        name: 
+          - curl
+          - sudo
+        state: present
+        update_cache: yes
+
+    - name: Install dependencies on RedHat-based systems
+      when: ansible_os_family == 'RedHat'
+      yum:
+        name: 
+          - curl
+          - sudo
+        state: present
+
+    - name: Check if kind is installed
+      command: kind --version
+      register: kind_installed
+      ignore_errors: yes    
+
+    - name: Download kind
+      get_url:
+        url: https://kind.sigs.k8s.io/dl/v0.18.0/kind-linux-amd64
+        dest: /usr/local/bin/kind
+        mode: '0755'
+      when: kind_installed.failed
+
+    - name: Fetch latest kubectl version
+      shell: "curl -L -s https://dl.k8s.io/release/stable.txt"
+      register: kubectl_version
+
+    - name: Debug kubectl version
+      debug:
+        msg: "Kubectl version is {{ kubectl_version.stdout }}"
+
+    - name: Check if kubectl is installed
+      command: kubectl version --client --short
+      register: kubectl_installed
+      ignore_errors: yes
+
+    - name: Download kubectl
+      get_url:
+        url: "https://dl.k8s.io/release/{{ kubectl_version.stdout }}/bin/linux/amd64/kubectl"
+        dest: /usr/local/bin/kubectl
+        mode: '0755'
+      when: kubectl_installed.failed
+
+    - name: Check if Kind cluster exists
+      shell: "kind get clusters | grep '^kind$'"
+      register: kind_cluster_exists
+      ignore_errors: yes
+
+    - name: Create Kind cluster
+      shell: |
+        kind create cluster --config - <<EOF
+        kind: Cluster
+        apiVersion: kind.x-k8s.io/v1alpha4
+        nodes:
+        - role: control-plane
+          extraPortMappings:
+          - containerPort: 6443
+            hostPort: 6443
+            protocol: TCP
+        EOF
+      when: kind_cluster_exists.stdout == ""
+
+    - name: Retrieve the current kubeadm configuration
+      shell: "kubectl -n kube-system get configmap kubeadm-config -o jsonpath='{.data.ClusterConfiguration}' --insecure-skip-tls-verify > /home/ec2-user/kubeadm.yaml"
+
+    - name: Modify kubeadm configuration to add public IP
+      blockinfile:
+        path: /home/ec2-user/kubeadm.yaml
+        marker: ""
+        block: |
+          apiServer:
+            certSANs:
+            - localhost
+            - 127.0.0.1
+            - 10.0.1.78
+            - {{ public_ip }}
+            extraArgs:
+              authorization-mode: Node,RBAC
+              runtime-config: ""
+            timeoutForControlPlane: 4m0s
+          apiVersion: kubeadm.k8s.io/v1beta3
+          certificatesDir: /etc/kubernetes/pki
+          clusterName: kind
+          controlPlaneEndpoint: kind-control-plane:6443
+          controllerManager:
+            extraArgs:
+              enable-hostpath-provisioner: "true"
+          dns: {}
+          etcd:
+            local:
+              dataDir: /var/lib/etcd
+          imageRepository: registry.k8s.io
+          kind: ClusterConfiguration
+          kubernetesVersion: v1.26.3
+          networking:
+            dnsDomain: cluster.local
+            podSubnet: 10.244.0.0/16
+            serviceSubnet: 10.96.0.0/16
+          scheduler: {}
+
+    - name: Move old API server certificates
+      command: docker exec -it kind-control-plane mv /etc/kubernetes/pki/apiserver.crt /etc/kubernetes/pki/apiserver.crt.bak
+
+    - name: Move old API server key
+      command: docker exec -it kind-control-plane mv /etc/kubernetes/pki/apiserver.key /etc/kubernetes/pki/apiserver.key.bak
+
+    - name: Copy modified kubeadm configuration into container
+      command: docker cp /home/ec2-user/kubeadm.yaml kind-control-plane:/kubeadm.yaml
+
+    - name: Generate new API server certificates
+      command: docker exec -it kind-control-plane kubeadm init phase certs apiserver --config /kubeadm.yaml
+
+    - name: Verify the new certificates include the public IP - Step 1
+      command: docker exec -it kind-control-plane openssl x509 -in /etc/kubernetes/pki/apiserver.crt -text -noout
+      register: certificate_output
+      when: kind_cluster_exists.failed
+
+    - name: Verify the new certificates include the public IP - Step 2
+      shell: "echo \"{{ certificate_output.stdout }}\" | grep -A 1 'X509v3 Subject Alternative Name'"
+      when: kind_cluster_exists.failed
+
+    - name: Check if Jenkins service account exists
+      command: kubectl get sa jenkins
+      register: sa_exists
+      ignore_errors: yes
+
+    - name: Create Jenkins service account
+      copy:
+        content: |
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: jenkins
+            namespace: default
+        dest: /home/ec2-user/service-account.yaml
+      when: sa_exists.failed
+
+    - name: Apply Jenkins service account
+      command: kubectl apply -f /home/ec2-user/service-account.yaml
+      when: sa_exists.failed
+
+    - name: Check if Jenkins cluster role binding exists
+      command: kubectl get clusterrolebinding jenkins-binding
+      register: role_binding_exists
+      ignore_errors: yes
+
+    - name: Create Jenkins cluster role binding
+      copy:
+        content: |
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            name: jenkins-binding
+          subjects:
+          - kind: ServiceAccount
+            name: jenkins
+            namespace: default
+          roleRef:
+            kind: ClusterRole
+            name: cluster-admin
+            apiGroup: rbac.authorization.k8s.io
+        dest: /home/ec2-user/role-binding.yaml
+      when: role_binding_exists.failed
+
+    - name: Apply Jenkins cluster role binding
+      command: kubectl apply -f /home/ec2-user/role-binding.yaml
+      when: role_binding_exists.failed
+
+    - name: Check if Jenkins secret exists
+      command: kubectl get secret jenkins-token
+      register: secret_exists
+      ignore_errors: yes
+
+    - name: Create Jenkins secret
+      copy:
+        content: |
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: jenkins-token
+            annotations:
+              kubernetes.io/service-account.name: jenkins
+          type: kubernetes.io/service-account-token
+        dest: /home/ec2-user/jenkins-secret.yaml
+      when: secret_exists.failed
+
+    - name: Apply Jenkins secret
+      command: kubectl apply -f /home/ec2-user/jenkins-secret.yaml
+      when: secret_exists.failed
+
+    - name: Patch Jenkins service account with the secret
+      command: >
+        kubectl patch serviceaccount jenkins -p '{"secrets": [{"name": "jenkins-token"}]}'
+
+    - name: Fetch the token
+      shell: "kubectl get secret $(kubectl get sa jenkins -o jsonpath='{.secrets[0].name}') -o jsonpath='{.data.token}' | base64 --decode"
+      register: token_output
+
+    - name: Fetch the CA certificate
+      shell: "kubectl get secret $(kubectl get sa jenkins -o jsonpath='{.secrets[0].name}') -o jsonpath='{.data.ca\\.crt}' | base64 --decode | base64"
+      register: ca_output
+
+    - name: Generate kubeconfig file
+      copy:
+        content: |
+          apiVersion: v1
+          kind: Config
+          clusters:
+          - cluster:
+              certificate-authority-data: {{ ca_output.stdout }}
+              server: https://{{ public_ip }}:6443
+            name: k3s
+          contexts:
+          - context:
+              cluster: k3s
+              namespace: default
+              user: jenkins
+            name: jenkins
+          current-context: jenkins
+          users:
+          - name: jenkins
+            user:
+              token: {{ token_output.stdout }}
+        dest: /tmp/k3s-jenkins.yaml

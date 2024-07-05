@@ -1,30 +1,17 @@
-export ANSIBLE_GROUP=Docker
-export AWS_REGION=eu-north-1
-python3 aws_ec2_inventory.py
+Create Ansible Playbook, to be run after the ansible playbooks of prepare_environment and install_docker
 
+This snsible playbook will be run ONLY on master node for now.
 
+Ansible playbook name:
 
+install_k8s_kind_cluster.yaml
 
+It should:
 
-clean jenkins directory
-
-root@localhost:/home/tluz/jenkins_home# sudo rm -rf /home/tluz/jenkins_home/workspace/*
-root@localhost:/home/tluz/jenkins_home# sudo rm -rf /home/tluz/jenkins_home/caches/git-*
-root@localhost:/home/tluz/jenkins_home# sudo rm -rf /home/tluz/jenkins_home/workspace/test_credentials/frontend/node_modules
-
-
-
-  docker run -d \
-  --name jenkins \
-  --group-add $(getent group docker | cut -d: -f3) \
-  -p 8080:8080 \
-  -p 50000:50000 \
-  -v /root/aws_credentials:/root/.aws \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v /home/tluz/jenkins_home:/var/jenkins_home \
-  -v /root/project:/root/project \
-  --user root \
-  custom-jenkins
-
-
-echo 'export ANSIBLE_PRIVATE_KEY_FILE=/root/.ssh/my-key-pair' >> ~/.bashrc
+1- Install kind cluster as a docker container
+2- Install Kubectl
+3- Start cluster
+4- Create service accounts, role binding, secret, and apply new CAs including the needed IP's
+5- Retreive token and CA
+6- Create the kubeconfig file with token, CA, and the server's public IP
+7- Apply commands to disable unused components for lower resource consumption

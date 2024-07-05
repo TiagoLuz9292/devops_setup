@@ -23,7 +23,7 @@ Documentation=https://k3s.io
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/k3s server
+ExecStart=/usr/local/bin/k3s server --kube-apiserver-arg enable-admission-plugins=ServiceAccount --write-kubeconfig-mode 644
 Restart=always
 RestartSec=5s
 

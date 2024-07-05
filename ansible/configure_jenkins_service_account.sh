@@ -1,0 +1,1 @@
+ansible-playbook -i /root/project/devops/kubernetes/inventory playbooks/configure_jenkins_service_account.yaml

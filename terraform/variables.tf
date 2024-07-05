@@ -1,3 +1,5 @@
+# Variable definitions for instance type, VPC and subnet CIDR blocks, region, and SSH key pair name.
+
 variable "instance_type" {
   description = "Type of EC2 instance"
   type        = string

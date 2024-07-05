@@ -43,13 +43,3 @@
         - /run/k3s
         - /run/flannel
       ignore_errors: yes
-
-    - name: Flush iptables rules
-      command: iptables -F
-      ignore_errors: yes
-
-    - name: Remove iptables rules file
-      file:
-        path: /etc/iptables/rules.v4
-        state: absent
-      ignore_errors: yes

@@ -1,0 +1,31 @@
+---
+- name: Initialize Kubernetes Master Node
+  hosts: master
+  become: true
+  tasks:
+    - name: Initialize the Kubernetes master
+      command: kubeadm init --pod-network-cidr=10.244.0.0/16
+      register: master_init
+
+    - name: Create .kube directory
+      file:
+        path: /home/ec2-user/.kube
+        state: directory
+        owner: ec2-user
+        mode: 0755
+
+    - name: Copy admin.conf to user's kube config
+      command: cp -i /etc/kubernetes/admin.conf /home/ec2-user/.kube/config
+      become_user: ec2-user
+
+    - name: Set ownership of kube config
+      file:
+        path: /home/ec2-user/.kube/config
+        owner: ec2-user
+        mode: 0644
+
+    - name: Install Flannel network plugin
+      command: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+      become: true
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf

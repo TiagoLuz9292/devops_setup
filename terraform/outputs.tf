@@ -1,34 +1,31 @@
+# Outputs for the VPC, subnet, and instances.
+
 output "vpc_id" {
-    description = "ID of the VPC"
-    value       = aws_vpc.main.id
-  }
-  
-  output "subnet_id" {
-    description = "ID of the public subnet"
-    value       = aws_subnet.public.id
-  }
-  
-  output "web1_instance_id" {
-    description = "ID of the first EC2 instance"
-    value       = aws_instance.web1.id
-  }
-  
-  output "web2_instance_id" {
-    description = "ID of the second EC2 instance"
-    value       = aws_instance.web2.id
-  }
-  
-  output "web1_instance_ip" {
-    description = "Public IP of the first EC2 instance"
-    value       = aws_instance.web1.public_ip
-  }
-  
-  output "web2_instance_ip" {
-    description = "Public IP of the second EC2 instance"
-    value       = aws_instance.web2.public_ip
-  }
-  
-  output "bucket_name" {
-    description = "Name of the S3 bucket"
-    value       = aws_s3_bucket.app_bucket.bucket
-  }
+  description = "ID of the VPC"
+  value       = aws_vpc.main.id
+}
+
+output "subnet_id" {
+  description = "ID of the public subnet"
+  value       = aws_subnet.public.id
+}
+
+output "master_instance_id" {
+  description = "ID of the master EC2 instance"
+  value       = aws_instance.master.id
+}
+
+output "worker_instance_ids" {
+  description = "IDs of the worker EC2 instances"
+  value       = [for instance in aws_instance.worker : instance.id]
+}
+
+output "master_instance_ip" {
+  description = "Public IP of the master EC2 instance"
+  value       = aws_instance.master.public_ip
+}
+
+output "worker_instance_ips" {
+  description = "Public IPs of the worker EC2 instances"
+  value       = [for instance in aws_instance.worker : instance.public_ip]
+}

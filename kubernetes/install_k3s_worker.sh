@@ -5,13 +5,13 @@ MASTER_IP=$1
 NODE_TOKEN=$2
 
 echo "Disabling SELinux temporarily..." | tee -a $LOG_FILE
-sudo setenforce 0
+sudo setenforce 0 || echo "SELinux not available or command failed" | tee -a $LOG_FILE
 
 echo "Disabling Docker repository temporarily..." | tee -a $LOG_FILE
-sudo sed -i 's/enabled=1/enabled=0/' /etc/yum.repos.d/docker-ce.repo
+sudo sed -i 's/enabled=1/enabled=0/' /etc/yum.repos.d/docker-ce.repo || echo "Docker repo not found or command failed" | tee -a $LOG_FILE
 
 echo "Installing container-selinux..." | tee -a $LOG_FILE
-sudo dnf install -y container-selinux >> $LOG_FILE 2>&1
+sudo dnf install -y container-selinux >> $LOG_FILE 2>&1 || echo "Failed to install container-selinux" | tee -a $LOG_FILE
 
 echo "Downloading k3s binary..." | tee -a $LOG_FILE
 curl -sfL https://github.com/k3s-io/k3s/releases/download/v1.29.6%2Bk3s1/k3s -o /usr/local/bin/k3s >> $LOG_FILE 2>&1
@@ -41,10 +41,10 @@ sudo systemctl enable k3s-agent >> $LOG_FILE 2>&1
 sudo systemctl start k3s-agent >> $LOG_FILE 2>&1
 
 echo "Re-enabling Docker repository..." | tee -a $LOG_FILE
-sudo sed -i 's/enabled=0/enabled=1/' /etc/yum.repos.d/docker-ce.repo
+sudo sed -i 's/enabled=0/enabled=1/' /etc/yum.repos.d/docker-ce.repo || echo "Docker repo not found or command failed" | tee -a $LOG_FILE
 
 echo "Re-enabling SELinux..." | tee -a $LOG_FILE
-sudo setenforce 1
+sudo setenforce 1 || echo "SELinux not available or command failed" | tee -a $LOG_FILE
 
 echo "Verifying k3s agent service status..." | tee -a $LOG_FILE
 sudo systemctl status k3s-agent | tee -a $LOG_FILE

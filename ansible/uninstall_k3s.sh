@@ -1,0 +1,1 @@
+ansible-playbook -i /root/project/devops/kubernetes/inventory playbooks/uninstall_k3s.yaml -vvvv

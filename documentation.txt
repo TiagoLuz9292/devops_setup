@@ -1,0 +1,315 @@
+export ANSIBLE_GROUP=Docker
+export AWS_REGION=eu-north-1
+python3 aws_ec2_inventory.py
+
+
+
+
+
+clean jenkins directory
+
+root@localhost:/home/tluz/jenkins_home# sudo rm -rf /home/tluz/jenkins_home/workspace/*
+root@localhost:/home/tluz/jenkins_home# sudo rm -rf /home/tluz/jenkins_home/caches/git-*
+root@localhost:/home/tluz/jenkins_home# sudo rm -rf /home/tluz/jenkins_home/workspace/test_credentials/frontend/node_modules
+
+
+
+  docker run -d \
+  --name jenkins \
+  --group-add $(getent group docker | cut -d: -f3) \
+  -p 8080:8080 \
+  -p 50000:50000 \
+  -v /root/aws_credentials:/root/.aws \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /home/tluz/jenkins_home:/var/jenkins_home \
+  -v /root/project:/root/project \
+  --user root \
+  my-jenkins
+
+
+echo 'export ANSIBLE_PRIVATE_KEY_FILE=/root/.ssh/my-key-pair' >> ~/.bashrc
+
+
+
+(on master node)
+sudo cp /etc/rancher/k3s/k3s.yaml /home/ec2-user/
+sudo chown ec2-user:ec2-user /home/ec2-user/k3s.yaml
+scp -i ~/.ssh/my-key-pair ec2-user@13.51.102.35:/home/ec2-user/k3s.yaml ./k3s.yaml  (project/devops/kubernetes)
+
+
+-----------------------
+
+Commands to get system info
+
+Check the OS and Version:
+
+cat /etc/os-release
+
+
+Check the Kernel Version:
+
+uname -r
+
+
+Check Available Package Managers:
+
+which apt-get
+which yum
+which amazon-linux-extras
+
+
+Check Installed Python Versions:
+
+python --version
+python3 --version
+
+
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+
+INSTALL KIND 
+
+
+
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.18.0/kind-linux-amd64
+chmod +x ./kind
+sudo mv ./kind /usr/local/bin/kind
+
+
+Create a Kind Cluster:
+
+kind create cluster
+
+---------------------------------
+
+INSTALL KUBECTL
+
+
+Download the kubectl Binary:
+
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+
+
+Make the kubectl Binary Executable:
+
+chmod +x kubectl
+
+
+Move the Binary to a Directory in Your PATH:
+
+sudo mv kubectl /usr/local/bin/
+
+
+----------------------------------
+
+kubernetes - add ips to the cluster master certificate
+
+Method 2: Modifying the Existing Cluster Configuration
+This method involves updating the existing cluster configuration. It’s more complex and requires manual intervention.
+
+
+
+SSH into your Kubernetes control plane node (the EC2 instance running the Kind cluster) and retrieve the kubeadm configuration:
+
+kubectl -n kube-system get configmap kubeadm-config -o jsonpath='{.data.ClusterConfiguration}' --insecure-skip-tls-verify > kubeadm.yaml
+
+
+Edit the kubeadm Configuration File TO ADD THE <PUBLIC_IP>:
+
+apiServer:
+  certSANs:
+  - localhost
+  - 127.0.0.1
+  - 10.0.1.78
+  - <PUBLIC_IP>
+  extraArgs:
+    authorization-mode: Node,RBAC
+    runtime-config: ""
+  timeoutForControlPlane: 4m0s
+apiVersion: kubeadm.k8s.io/v1beta3
+certificatesDir: /etc/kubernetes/pki
+clusterName: kind
+controlPlaneEndpoint: kind-control-plane:6443
+controllerManager:
+  extraArgs:
+    enable-hostpath-provisioner: "true"
+dns: {}
+etcd:
+  local:
+    dataDir: /var/lib/etcd
+imageRepository: registry.k8s.io
+kind: ClusterConfiguration
+kubernetesVersion: v1.26.3
+networking:
+  dnsDomain: cluster.local
+  podSubnet: 10.244.0.0/16
+  serviceSubnet: 10.96.0.0/16
+scheduler: {}
+
+
+
+Move the old API server certificates to another location so kubeadm can generate new ones:
+
+docker exec -it kind-control-plane mv /etc/kubernetes/pki/apiserver.crt /etc/kubernetes/pki/apiserver.crt.bak
+docker exec -it kind-control-plane mv /etc/kubernetes/pki/apiserver.key /etc/kubernetes/pki/apiserver.key.bak
+
+
+Use the docker cp command to copy the file into the container:
+
+docker cp /home/ec2-user/kubeadm.yaml kind-control-plane:/kubeadm.yaml
+
+
+Use kubeadm to generate new certificates with the updated SANs:
+
+docker exec -it kind-control-plane kubeadm init phase certs apiserver --config /kubeadm.yaml
+
+
+
+
+
+
+
+
+
+Verify the New Certificates Include the New IP Address
+
+docker exec -it kind-control-plane openssl x509 -in /etc/kubernetes/pki/apiserver.crt -text
+
+
+NOW WE NEED TO GET THE NEW CA STRING AND TOKEN to add to the configuration file!! this is a MUST for the deployments to work
+
+
+kubectl delete serviceaccount jenkins
+kubectl delete clusterrolebinding jenkins-binding
+
+#####################################
+
+cat <<EOF > service-account.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jenkins
+  namespace: default
+EOF
+
+kubectl apply -f service-account.yaml
+
+#####################################
+
+cat <<EOF > role-binding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: jenkins-binding
+subjects:
+- kind: ServiceAccount
+  name: jenkins
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+EOF
+
+kubectl apply -f role-binding.yaml
+
+#####################################
+
+cat <<EOF > secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: jenkins-token
+  annotations:
+    kubernetes.io/service-account.name: jenkins
+type: kubernetes.io/service-account-token
+EOF
+
+kubectl apply -f secret.yaml
+
+#####################################
+
+kubectl patch serviceaccount jenkins -p '{"secrets": [{"name": "jenkins-token"}]}'
+
+SECRET_NAME=$(kubectl get sa jenkins -o jsonpath='{.secrets[0].name}')
+TOKEN=$(kubectl get secret $SECRET_NAME -o jsonpath='{.data.token}' | base64 --decode)
+CA_CRT=$(kubectl get secret $SECRET_NAME -o jsonpath='{.data.ca\.crt}' | base64 --decode)
+
+echo "Token: $TOKEN"
+echo "CA Certificate: $CA_CRT"
+
+add Token and CA Certificate into kubeconfig yaml file and save that file in /tmp (so that in the future when jenkins deploys k8s manifests, it can fetch the kubefile from that directory)
+
+this is the template file:
+
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    certificate-authority-data: <CA>
+    server: https://<PUBLIC_IP>:6443
+  name: k3s
+contexts:
+- context:
+    cluster: k3s
+    namespace: default
+    user: jenkins
+  name: jenkins
+current-context: jenkins
+users:
+- name: jenkins
+  user:
+    token: <TOKEN>
+
+------------------------------------------------------
+
+PERFORMANCE - run these commands to lower resource consumption with low memory
+
+Enter the container:
+
+docker exec -it kind-control-plane /bin/bash
+
+
+Stop and Disable Unnecessary Services:
+
+systemctl stop kube-scheduler
+systemctl disable kube-scheduler
+systemctl stop kube-controller-manager
+systemctl disable kube-controller-manager
+
+
+check performance:
+
+kubectl top pods --all-namespaces --kubeconfig=/root/project/devops/jenkins-docker/k3s-jenkins.yaml
+kubectl top nodes --kubeconfig=/root/project/devops/jenkins-docker/k3s-jenkins.yaml
+
+
+
+-------------------------------------------
+
+STOP KIND CLUSTER
+
+kind delete cluster
+
+
+-------------------------------------------
+
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    certificate-authority-data: <CA>
+    server: https://<PUBLIC_IP>:6443
+  name: k3s
+contexts:
+- context:
+    cluster: k3s
+    namespace: default
+    user: jenkins
+  name: jenkins
+current-context: jenkins
+users:
+- name: jenkins
+  user:
+    token: <TOKEN>
