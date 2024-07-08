@@ -313,3 +313,755 @@ users:
 - name: jenkins
   user:
     token: <TOKEN>
+
+
+
+################################################################################################################################################
+################################################################################################################################################   
+
+
+Kubernetes installation
+
+
+Step 1: Disable SELinux
+It's recommended to disable SELinux to avoid any permission issues during Kubernetes setup.
+
+
+sudo setenforce 0
+sudo sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
+
+
+************ INSTALL KUBECTL, KUBEADM, AND KUBELET ************
+
+Manually download the RPM packages for kubelet, kubeadm, and kubectl from the Kubernetes GitHub repository.
+
+curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubeadm
+curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubelet
+
+Make the downloaded binaries executable and move them to /usr/local/bin.
+
+chmod +x kubectl kubeadm kubelet
+sudo mv kubectl kubeadm kubelet /usr/local/bin/
+
+Create the kubelet systemd service unit file.
+
+cat <<EOF | sudo tee /etc/systemd/system/kubelet.service
+[Unit]
+Description=kubelet: The Kubernetes Node Agent
+Documentation=https://kubernetes.io/docs/home/
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/kubelet
+Restart=always
+StartLimitInterval=0
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+Enable and Start Kubelet:
+Enable and start the kubelet service.
+
+
+sudo systemctl daemon-reload
+sudo systemctl enable kubelet
+sudo systemctl start kubelet
+
+
+
+
+Disable Swap:
+Ensure swap is disabled, as Kubernetes requires it.
+
+Disable zram Swap Permanently:
+
+If zram is being used, you need to ensure it is permanently disabled. This can be done by stopping and disabling the service responsible for managing zram.
+
+sudo systemctl stop systemd-zram-setup@zram0.service
+sudo systemctl disable systemd-zram-setup@zram0.service
+
+sudo swapoff -a
+sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+
+CONFIRM SWAP IS OFF:
+
+sudo swapon --show
+
+CONFIRM KUBELET IS RUNNING:
+
+sudo systemctl status kubelet
+
+
+
+
+
+
+
+
+
+
+Let's correct the config.toml file and ensure it has the necessary configurations for containerd. Here is a standard configuration you can use:
+
+Updating /etc/containerd/config.toml
+Edit the config.toml file:
+
+bash
+Copiar código
+sudo nano /etc/containerd/config.toml
+Replace the content with the following configuration:
+
+toml
+Copiar código
+version = 2
+
+[plugins]
+  [plugins."io.containerd.grpc.v1.cri"]
+    sandbox_image = "registry.k8s.io/pause:3.9"
+    [plugins."io.containerd.grpc.v1.cri.containerd"]
+      snapshotter = "overlayfs"
+      [plugins."io.containerd.grpc.v1.cri.containerd.runtimes.runc"]
+        runtime_type = "io.containerd.runc.v2"
+        [plugins."io.containerd.grpc.v1.cri.containerd.runtimes.runc.options]
+          SystemdCgroup = true
+
+[debug]
+  level = "info"
+  address = "/run/containerd/debug.sock"
+Restarting the Services
+Restart the containerd service:
+
+bash
+Copiar código
+sudo systemctl restart containerd
+Restart the kubelet service:
+
+bash
+Copiar código
+sudo systemctl restart kubelet
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Enable IP forwarding:
+
+
+sudo tee /etc/sysctl.d/k8s.conf <<EOF
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+EOF
+sudo sysctl --system
+
+
+Install CRI Tools (crictl)
+
+sudo yum install -y conntrack-tools
+
+Download and Install CRI Tools
+
+wget https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.23.0/crictl-v1.23.0-linux-amd64.tar.gz
+sudo tar zxvf crictl-v1.23.0-linux-amd64.tar.gz -C /usr/local/bin
+
+
+Install Socat and Tc
+
+sudo yum install -y socat
+sudo yum install -y iproute-tc
+
+
+
+Initialize Kubernetes Master:
+Replace YOUR_POD_NETWORK_CIDR with your desired pod network CIDR.
+
+
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16
+
+
+
+Remove the existing Kubernetes manifest files to ensure a clean initialization.
+
+
+sudo rm -f /etc/kubernetes/manifests/kube-apiserver.yaml
+sudo rm -f /etc/kubernetes/manifests/kube-controller-manager.yaml
+sudo rm -f /etc/kubernetes/manifests/kube-scheduler.yaml
+sudo rm -f /etc/kubernetes/manifests/etcd.yaml
+
+Reset kubeadm to clean up any previous state that might cause conflicts.
+
+sudo kubeadm reset -f
+
+sudo swapoff -a
+
+Initialize the Kubernetes cluster with kubeadm.
+
+
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16
+
+
+
+
+
+
+
+
+
+
+
+
+*******************************************************************************
+
+INCREASE RAM LIMIT
+
+Locate the zram configuration file:
+This is usually located in /etc/systemd/zram-generator.conf or similar directory depending on the Linux distribution.
+
+Edit the configuration:
+Open the configuration file with a text editor. For example, using nano:
+
+
+sudo nano /etc/systemd/zram-generator.conf
+Update the configuration:
+Modify or add the following configuration to increase the memory limit. Change the value as required to match your available memory (for instance, setting it to 2GB):
+
+ini
+Copiar código
+[zram0]
+zram-size = 2048
+Reload the configuration:
+After updating the configuration, reload the systemd configuration and restart the zram service:
+
+
+sudo systemctl daemon-reload
+sudo systemctl restart systemd-zram-setup@zram0.service
+If the service name differs, you can find the correct service name using systemctl list-units | grep zram.
+
+Verify the changes:
+Confirm that the new settings have been applied:
+
+
+sudo zramctl
+
+
+
+********************************************************************************
+
+Kubernetes installation v2
+
+sudo yum update -y
+sudo yum install -y yum-utils device-mapper-persistent-data lvm2
+
+wget https://github.com/containerd/containerd/releases/download/v1.6.14/containerd-1.6.14-linux-amd64.tar.gz
+
+sudo tar Czxvf /usr/local containerd-1.6.14-linux-amd64.tar.gz
+
+
+sudo tee /etc/systemd/system/containerd.service <<EOF
+[Unit]
+Description=containerd container runtime
+Documentation=https://containerd.io
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/containerd
+Delegate=yes
+KillMode=process
+LimitNOFILE=1048576
+LimitNPROC=infinity
+LimitCORE=infinity
+TasksMax=infinity
+OOMScoreAdjust=-999
+ExecReload=/bin/kill -s HUP \$MAINPID
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now containerd
+
+wget https://dl.k8s.io/release/v1.30.0/bin/linux/amd64/kubectl
+wget https://dl.k8s.io/release/v1.30.0/bin/linux/amd64/kubeadm
+wget https://dl.k8s.io/release/v1.30.0/bin/linux/amd64/kubelet
+
+
+chmod +x kubectl kubeadm kubelet
+sudo mv kubectl kubeadm kubelet /usr/local/bin/
+
+
+sudo mkdir -p /etc/systemd/system/kubelet.service.d
+sudo tee /etc/systemd/system/kubelet.service.d/10-kubeadm.conf <<EOF
+[Service]
+Environment="KUBELET_EXTRA_ARGS=--cgroup-driver=systemd"
+EOF
+
+
+sudo tee /etc/systemd/system/kubelet.service <<EOF
+[Unit]
+Description=kubelet: The Kubernetes Node Agent
+Documentation=https://kubernetes.io/docs/
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/kubelet
+Restart=always
+StartLimitInterval=0
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now kubelet
+
+
+sudo swapoff -a
+sudo sed -i '/swap/d' /etc/fstab
+
+
+
+VERSION="v1.30.0" # Replace with your desired version
+curl -LO https://github.com/kubernetes-sigs/cri-tools/releases/download/$VERSION/crictl-$VERSION-linux-amd64.tar.gz
+sudo tar zxvf crictl-$VERSION-linux-amd64.tar.gz -C /usr/local/bin
+sudo chmod +x /usr/local/bin/crictl
+
+
+sudo yum install -y iproute
+
+
+
+sudo yum install -y ebtables socat conntrack iptables
+
+
+
+sudo hostnamectl set-hostname ip-10-0-1-128.eu-north-1.compute.internal
+echo "127.0.0.1 $(hostname)" | sudo tee -a /etc/hosts
+
+
+
+sudo systemctl stop kubelet
+
+
+echo "net.ipv4.ip_forward = 1" | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+
+
+sudo vi /etc/kubernetes/kubeadm-config.yaml
+
+
+sudo containerd config default | sudo tee /etc/containerd/config.toml
+sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+sudo systemctl restart containerd
+
+
+
+IMPORTANT
+
+The error indicates that runc is not found in the $PATH. runc is the default OCI runtime used by containerd. Let's install runc and ensure it is in the $PATH.
+
+Step 1: Install runc
+Download and Install runc:
+bash
+Copiar código
+wget https://github.com/opencontainers/runc/releases/download/v1.1.5/runc.amd64
+sudo install -m 755 runc.amd64 /usr/local/sbin/runc
+
+
+
+The error message indicates that runc is expecting cgroupsPath to be in a specific format that is compatible with systemd cgroups. Let's update the config.toml to ensure systemd cgroups are being used.
+
+Step 1: Update containerd config.toml
+Edit the containerd configuration file:
+
+bash
+Copiar código
+sudo nano /etc/containerd/config.toml
+Ensure the following sections are updated:
+
+toml
+Copiar código
+[plugins."io.containerd.grpc.v1.cri".containerd]
+  ...
+  systemd_cgroup = true
+
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+  SystemdCgroup = true
+
+
+
+
+The error message indicates that runc expects cgroupsPath to be of format "slice:prefix
+" for systemd cgroups, but it received a different format.
+
+To address this issue, you need to set the SystemdCgroup to false in your Containerd configuration file. Here's how to update your configuration:
+
+Open the config.toml file for editing.
+Change the SystemdCgroup setting from true to false in the runtimes.runc.options section.
+Restart the Containerd service.
+Here is the updated relevant part of your config.toml:
+
+toml
+Copiar código
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+  SystemdCgroup = false
+
+
+IMPORTANTTT
+sudo chmod +x /opt/cni/bin/*
+
+
+
+
+
+Thank you for sharing the detailed output and logs. The key issue seems to be that the API server pod is not being created, likely due to the incomplete metadata in the static pod manifest. Let's address the specific points and correct the manifest file.
+
+Correct the Static Pod Manifest
+The error you encountered when manually running the pod (name, namespace or uid is not in metadata) indicates that the metadata section is missing required fields. Let's update the kube-apiserver.yaml manifest to include the required uid field in the metadata.
+
+Here's the corrected version of the kube-apiserver.yaml manifest:
+
+yaml
+Copiar código
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kube-apiserver
+  namespace: kube-system
+  uid: kube-apiserver-uid
+  labels:
+    component: kube-apiserver
+    tier: control-plane
+  annotations:
+    kubeadm.kubernetes.io/kube-apiserver.advertise-address.endpoint: 10.0.1.128:6443
+spec:
+  containers:
+  - command:
+    - kube-apiserver
+    - --advertise-address=10.0.1.128
+    - --allow-privileged=true
+    - --authorization-mode=Node,RBAC
+    - --client-ca-file=/etc/kubernetes/pki/ca.crt
+    - --enable-admission-plugins=NodeRestriction
+    - --enable-bootstrap-token-auth=true
+    - --etcd-cafile=/etc/kubernetes/pki/etcd/ca.crt
+    - --etcd-certfile=/etc/kubernetes/pki/apiserver-etcd-client.crt
+    - --etcd-keyfile=/etc/kubernetes/pki/apiserver-etcd-client.key
+    - --etcd-servers=https://127.0.0.1:2379
+    - --kubelet-client-certificate=/etc/kubernetes/pki/apiserver-kubelet-client.crt
+    - --kubelet-client-key=/etc/kubernetes/pki/apiserver-kubelet-client.key
+    - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+    - --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt
+    - --proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key
+    - --requestheader-allowed-names=front-proxy-client
+    - --requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt
+    - --requestheader-extra-headers-prefix=X-Remote-Extra-
+    - --requestheader-group-headers=X-Remote-Group
+    - --requestheader-username-headers=X-Remote-User
+    - --secure-port=6443
+    - --service-account-issuer=https://kubernetes.default.svc.cluster.local
+    - --service-account-key-file=/etc/kubernetes/pki/sa.pub
+    - --service-account-signing-key-file=/etc/kubernetes/pki/sa.key
+    - --service-cluster-ip-range=10.96.0.0/12
+    - --tls-cert-file=/etc/kubernetes/pki/apiserver.crt
+    - --tls-private-key-file=/etc/kubernetes/pki/apiserver.key
+    image: registry.k8s.io/kube-apiserver:v1.30.2
+    imagePullPolicy: IfNotPresent
+    livenessProbe:
+      failureThreshold: 8
+      httpGet:
+        host: 10.0.1.128
+        path: /livez
+        port: 6443
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    name: kube-apiserver
+    readinessProbe:
+      failureThreshold: 3
+      httpGet:
+        host: 10.0.1.128
+        path: /readyz
+        port: 6443
+        scheme: HTTPS
+      periodSeconds: 1
+      timeoutSeconds: 15
+    resources:
+      requests:
+        cpu: 250m
+    startupProbe:
+      failureThreshold: 24
+      httpGet:
+        host: 10.0.1.128
+        path: /livez
+        port: 6443
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    volumeMounts:
+    - mountPath: /etc/ssl/certs
+      name: ca-certs
+      readOnly: true
+    - mountPath: /etc/pki
+      name: etc-pki
+      readOnly: true
+    - mountPath: /etc/kubernetes/pki
+      name: k8s-certs
+      readOnly: true
+  hostNetwork: true
+  priority: 2000001000
+  priorityClassName: system-node-critical
+  securityContext:
+    seccompProfile:
+      type: RuntimeDefault
+  volumes:
+  - hostPath:
+      path: /etc/ssl/certs
+      type: DirectoryOrCreate
+    name: ca-certs
+  - hostPath:
+      path: /etc/pki
+      type: DirectoryOrCreate
+    name: etc-pki
+  - hostPath:
+      path: /etc/kubernetes/pki
+      type: DirectoryOrCreate
+    name: k8s-certs
+status: {}
+
+
+
+
+
+Since the etcd service is not found, it means the etcd server is not running. This is a critical component for the Kubernetes control plane. Let's ensure that etcd is running and then restart the kube-apiserver.
+
+Step 1: Create a systemd service file for etcd
+First, create a systemd service file for etcd:
+
+sh
+Copiar código
+sudo nano /etc/systemd/system/etcd.service
+Add the following content to the file:
+
+ini
+Copiar código
+[Unit]
+Description=etcd key-value store
+Documentation=https://github.com/coreos/etcd
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/etcd \
+  --name etcd0 \
+  --data-dir=/var/lib/etcd \
+  --listen-client-urls=http://127.0.0.1:2379 \
+  --advertise-client-urls=http://127.0.0.1:2379 \
+  --listen-peer-urls=http://127.0.0.1:2380 \
+  --initial-advertise-peer-urls=http://127.0.0.1:2380 \
+  --initial-cluster=etcd0=http://127.0.0.1:2380 \
+  --initial-cluster-token=etcd-cluster-1 \
+  --initial-cluster-state=new
+Restart=always
+RestartSec=5
+LimitNOFILE=40000
+
+[Install]
+WantedBy=multi-user.target
+Save and exit the file.
+
+Step 2: Start and enable the etcd service
+Enable and start the etcd service:
+
+sh
+Copiar código
+sudo systemctl daemon-reload
+sudo systemctl enable etcd
+sudo systemctl start etcd
+sudo systemctl status etcd
+
+
+
+sudo chmod 600 /etc/kubernetes/pki/apiserver-etcd-client.key
+
+sudo ETCDCTL_API=3 \
+ETCDCTL_CACERT=/etc/kubernetes/pki/etcd/ca.crt \
+ETCDCTL_CERT=/etc/kubernetes/pki/apiserver-etcd-client.crt \
+ETCDCTL_KEY=/etc/kubernetes/pki/apiserver-etcd-client.key \
+etcdctl --endpoints=https://127.0.0.1:2379 endpoint health
+
+
+The error message indicates that the file /etc/kubernetes/pki/etcd/etcd.crt cannot be found. Let's verify the presence of the required certificates and keys for etcd.
+
+Run the following commands to check if the necessary certificate and key files exist:
+
+sh
+Copiar código
+ls -la /etc/kubernetes/pki/etcd/etcd.crt
+ls -la /etc/kubernetes/pki/etcd/etcd.key
+ls -la /etc/kubernetes/pki/etcd/ca.crt
+If any of these files are missing, you need to ensure they are created or copied to the appropriate location. If the files are missing, you might need to regenerate them. Here's an example of how to generate these certificates using OpenSSL:
+
+sh
+Copiar código
+# Generate a new CA key and certificate
+openssl genpkey -algorithm RSA -out /etc/kubernetes/pki/etcd/ca.key -pkeyopt rsa_keygen_bits:2048
+openssl req -new -key /etc/kubernetes/pki/etcd/ca.key -subj "/CN=etcd-ca" -out /etc/kubernetes/pki/etcd/ca.csr
+openssl x509 -req -in /etc/kubernetes/pki/etcd/ca.csr -signkey /etc/kubernetes/pki/etcd/ca.key -out /etc/kubernetes/pki/etcd/ca.crt
+
+# Generate a new server key and certificate
+openssl genpkey -algorithm RSA -out /etc/kubernetes/pki/etcd/etcd.key -pkeyopt rsa_keygen_bits:2048
+openssl req -new -key /etc/kubernetes/pki/etcd/etcd.key -subj "/CN=etcd-server" -out /etc/kubernetes/pki/etcd/etcd.csr
+openssl x509 -req -in /etc/kubernetes/pki/etcd/etcd.csr -CA /etc/kubernetes/pki/etcd/ca.crt -CAkey /etc/kubernetes/pki/etcd/ca.key -CAcreateserial -out /etc/kubernetes/pki/etcd/etcd.crt
+After ensuring that the certificates and keys are in place, restart the etcd service:
+
+sh
+Copiar código
+sudo systemctl restart etcd
+Then check the status of the etcd service again:
+
+sh
+Copiar código
+sudo systemctl status etcd
+
+
+
+Step 1: Generate a new Certificate Signing Request (CSR) for the client certificate
+sh
+Copiar código
+openssl genrsa -out /etc/kubernetes/pki/apiserver-etcd-client.key 2048
+openssl req -new -key /etc/kubernetes/pki/apiserver-etcd-client.key -out /etc/kubernetes/pki/apiserver-etcd-client.csr -subj "/CN=kube-apiserver-etcd-client"
+Step 2: Sign the CSR with the CA to generate the client certificate
+sh
+Copiar código
+openssl x509 -req -in /etc/kubernetes/pki/apiserver-etcd-client.csr -CA /etc/kubernetes/pki/etcd/ca.crt -CAkey /etc/kubernetes/pki/etcd/ca.key -CAcreateserial -out /etc/kubernetes/pki/apiserver-etcd-client.crt -days 365 -sha256
+Step 3: Verify the new client certificate against the CA
+sh
+Copiar código
+openssl verify -CAfile /etc/kubernetes/pki/etcd/ca.crt /etc/kubernetes/pki/apiserver-etcd-client.crt
+This should return a message indicating that the client certificate is valid.
+
+Step 4: Restart the etcd service
+After re-generating the client certificate, restart the etcd service to apply the new certificate.
+
+sh
+Copiar código
+sudo systemctl restart etcd
+sudo systemctl status etcd
+Step 5: Test the etcd health again
+sh
+Copiar código
+sudo ETCDCTL_API=3 \
+ETCDCTL_CACERT=/etc/kubernetes/pki/etcd/ca.crt \
+ETCDCTL_CERT=/etc/kubernetes/pki/apiserver-etcd-client.crt \
+ETCDCTL_KEY=/etc/kubernetes/pki/apiserver-etcd-client.key \
+etcdctl --endpoints=https://127.0.0.1:2379 endpoint health
+These steps should ensure that the client certificate is correctly signed by the CA and that etcd can authenticate the client certificate successfully. Let me know if you encounter any further issues.
+
+
+
+
+
+
+
+f the ~/.kube/config file does not exist, you can create it manually using the content provided. Here is how to do it:
+
+Create the Configuration Directory:
+
+First, create the .kube directory in the home directory if it doesn't exist:
+
+bash
+Copiar código
+mkdir -p ~/.kube
+Create the Configuration File:
+
+Next, create the config file in the .kube directory:
+
+bash
+Copiar código
+nano ~/.kube/config
+Add the Configuration Content:
+
+Copy and paste the following content into the config file. Adjust the server field as needed to point to your Kubernetes API server (https://127.0.0.1:6443 or https://10.0.1.128:6443):
+
+yaml
+Copiar código
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority: /etc/kubernetes/pki/ca.crt
+    server: https://127.0.0.1:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: kubelet
+  name: kubelet@kubernetes
+current-context: kubelet@kubernetes
+kind: Config
+preferences: {}
+users:
+- name: kubelet
+  user:
+    client-certificate: /etc/kubernetes/pki/kubelet.crt
+    client-key: /etc/kubernetes/pki/kubelet.key
+Save and Close the File:
+
+Save the file and exit the editor.
+
+Set the KUBECONFIG Environment Variable:
+
+Ensure that the KUBECONFIG environment variable is set to use this configuration file:
+
+bash
+Copiar código
+export KUBECONFIG=~/.kube/config
+
+
+
+
+
+
+sudo ctr run --rm --net-host --mount type=bind,src=/etc/kubernetes/pki,dst=/etc/kubernetes/pki,options=rbind:ro --mount type=bind,src=/etc/ssl/certs,dst=/etc/ssl/certs,options=rbind:ro registry.k8s.io/kube-apiserver:v1.30.2 kube-apiserver \
+kube-apiserver --advertise-address=10.0.1.128 --allow-privileged=true --authorization-mode=Node,RBAC --client-ca-file=/etc/kubernetes/pki/ca.crt --enable-admission-plugins=NodeRestriction \
+--enable-bootstrap-token-auth=true --etcd-cafile=/etc/kubernetes/pki/etcd/ca.crt --etcd-certfile=/etc/kubernetes/pki/apiserver-etcd-client.crt --etcd-keyfile=/etc/kubernetes/pki/apiserver-etcd-client.key \
+--etcd-servers=https://127.0.0.1:2379 --kubelet-client-certificate=/etc/kubernetes/pki/apiserver-kubelet-client.crt --kubelet-client-key=/etc/kubernetes/pki/apiserver-kubelet-client.key \
+--kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt --proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key \
+--requestheader-allowed-names=front-proxy-client --requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt --requestheader-extra-headers-prefix=X-Remote-Extra- \
+--requestheader-group-headers=X-Remote-Group --requestheader-username-headers=X-Remote-User --secure-port=6443 --service-account-issuer=https://kubernetes.default.svc.cluster.local \
+--service-account-key-file=/etc/kubernetes/pki/sa.pub --service-account-signing-key-file=/etc/kubernetes/pki/sa.key --service-cluster-ip-range=10.96.0.0/12 --tls-cert-file=/etc/kubernetes/pki/apiserver.crt \
+--tls-private-key-file=/etc/kubernetes/pki/apiserver.key
+
+
+
+
+
+
+
+
+
+
+sudo kubeadm init --config /etc/kubernetes/kubeadm-config.yaml
+
+sudo kubeadm init --pod-network-cidr=192.168.0.0/16
+
+
+
+
+sudo crictl runp /etc/kubernetes/manifests/kube-apiserver.yaml
+sudo crictl pods

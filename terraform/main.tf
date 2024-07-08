@@ -122,7 +122,7 @@ resource "aws_security_group" "instance" {
 
 # Master Node
 resource "aws_instance" "master" {
-  ami           = "ami-01b1be742d950fb7f"  # Change to an appropriate AMI ID for your region
+  ami           = "ami-052387465d846f3fc"  # Change to an appropriate AMI ID for your region
   instance_type = var.instance_type
   subnet_id     = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.instance.id]
@@ -140,34 +140,9 @@ resource "aws_eip" "master_eip" {
   instance = aws_instance.master.id
 }
 
-# Worker Nodes
-resource "aws_instance" "worker" {
-  count         = 2
-  ami           = "ami-01b1be742d950fb7f"  # Change to an appropriate AMI ID for your region
-  instance_type = var.instance_type
-  subnet_id     = aws_subnet.public.id
-  vpc_security_group_ids = [aws_security_group.instance.id]
-  key_name      = var.key_name
-  associate_public_ip_address = true
-
-  tags = {
-    Name  = "K8s-Worker-${count.index}"
-    Group = "Kubernetes"
-  }
-}
-
-# Allocate Elastic IPs for Worker Nodes
-resource "aws_eip" "worker_eip" {
-  count    = 2
-  instance = aws_instance.worker.*.id[count.index]
-}
 
 # Outputs
 # Provides output values for the VPC, subnet, and instances.
 output "master_public_ip" {
   value = aws_eip.master_eip.public_ip
-}
-
-output "worker_public_ips" {
-  value = [for eip in aws_eip.worker_eip : eip.public_ip]
 }

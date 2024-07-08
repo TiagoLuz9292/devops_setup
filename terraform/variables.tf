@@ -3,7 +3,7 @@
 variable "instance_type" {
   description = "Type of EC2 instance"
   type        = string
-  default     = "t3.micro"
+  default     = "t3.medium"
 }
 
 variable "vpc_cidr" {
