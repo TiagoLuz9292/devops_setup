@@ -20,3 +20,13 @@ output "master_instance_ip" {
   value       = aws_instance.master.public_ip
 }
 
+# Outputs for the worker node
+output "worker_instance_id" {
+  description = "ID of the worker EC2 instance"
+  value       = aws_instance.worker.id
+}
+
+output "worker_instance_ip" {
+  description = "Public IP of the worker EC2 instance"
+  value       = aws_instance.worker.public_ip
+}

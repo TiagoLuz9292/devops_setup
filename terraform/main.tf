@@ -135,9 +135,29 @@ resource "aws_instance" "master" {
   }
 }
 
+# Worker Node
+resource "aws_instance" "worker" {
+  ami           = "ami-052387465d846f3fc"  # Change to an appropriate AMI ID for your region
+  instance_type = "t3.small"
+  subnet_id     = aws_subnet.public.id
+  vpc_security_group_ids = [aws_security_group.instance.id]
+  key_name      = var.key_name
+  associate_public_ip_address = true
+
+  tags = {
+    Name  = "K8s-Worker"
+    Group = "Kubernetes"
+  }
+}
+
 # Allocate Elastic IP for Master Node
 resource "aws_eip" "master_eip" {
   instance = aws_instance.master.id
+}
+
+# Allocate Elastic IP for Worker Node
+resource "aws_eip" "worker_eip" {
+  instance = aws_instance.worker.id
 }
 
 
@@ -145,4 +165,26 @@ resource "aws_eip" "master_eip" {
 # Provides output values for the VPC, subnet, and instances.
 output "master_public_ip" {
   value = aws_eip.master_eip.public_ip
+}
+
+# Local-exec to update the inventory file
+resource "null_resource" "update_inventory" {
+  provisioner "local-exec" {
+    command = <<EOT
+      echo "[all]" > /root/project/devops/kubernetes/inventory
+      echo "master ansible_host=${aws_eip.master_eip.public_ip} ansible_user=ec2-user" >> /root/project/devops/kubernetes/inventory
+      echo "worker ansible_host=${aws_eip.worker_eip.public_ip} ansible_user=ec2-user" >> /root/project/devops/kubernetes/inventory
+      echo "" >> /root/project/devops/kubernetes/inventory
+      echo "[master]" >> /root/project/devops/kubernetes/inventory
+      echo "master" >> /root/project/devops/kubernetes/inventory
+      echo "" >> /root/project/devops/kubernetes/inventory
+      echo "[workers]" >> /root/project/devops/kubernetes/inventory
+      echo "worker" >> /root/project/devops/kubernetes/inventory
+    EOT
+  }
+
+  triggers = {
+    worker_ip = aws_eip.worker_eip.public_ip
+    master_ip = aws_eip.master_eip.public_ip
+  }
 }
