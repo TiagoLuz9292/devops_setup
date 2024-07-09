@@ -1,0 +1,119 @@
+---
+- name: Setup Jenkins service account on Kubernetes
+  hosts: master
+  become: true
+  tasks:
+    - name: Set KUBECONFIG environment variable
+      set_fact:
+        kubeconfig_path: "/etc/kubernetes/admin.conf"
+
+    - name: Remove existing Jenkins service account
+      command: kubectl delete serviceaccount jenkins -n default
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      ignore_errors: yes
+
+    - name: Remove existing Jenkins cluster role binding
+      command: kubectl delete clusterrolebinding jenkins
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      ignore_errors: yes
+
+    - name: Remove existing Jenkins secret
+      command: kubectl delete secret jenkins-secret -n default
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      ignore_errors: yes
+
+    - name: Remove existing kubeconfig file for Jenkins
+      file:
+        path: /tmp/kubeconfig-jenkins.yaml
+        state: absent
+
+    - name: Create service account for Jenkins
+      command: kubectl create serviceaccount jenkins -n default
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+
+    - name: Create cluster role binding for Jenkins
+      command: kubectl create clusterrolebinding jenkins --clusterrole=cluster-admin --serviceaccount=default:jenkins
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+
+    - name: Get Jenkins token
+      command: kubectl create token jenkins -n default --duration=24h
+      register: jenkins_token
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+
+    - name: Create secret for Jenkins token
+      command: kubectl create secret generic jenkins-secret --namespace default --from-literal=token={{ jenkins_token.stdout }} --from-file=ca.crt=/etc/kubernetes/pki/ca.crt
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+
+    - name: Patch service account with secret
+      shell: |
+        kubectl patch serviceaccount jenkins -n default -p '{"secrets": [{"name": "jenkins-secret"}]}'
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+
+    - name: Retrieve certificate-authority-data
+      command: kubectl get secret jenkins-secret -n default -o jsonpath="{.data['ca\.crt']}"
+      register: ca_crt_data
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+
+    - name: Retrieve cluster server
+      command: kubectl config view --minify -o jsonpath="{.clusters[0].cluster.server}"
+      register: cluster_server
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+
+    - name: Create kubeconfig file for Jenkins
+      shell: |
+        cat <<EOF > /tmp/kubeconfig-jenkins.yaml
+        apiVersion: v1
+        kind: Config
+        clusters:
+        - cluster:
+            certificate-authority-data: {{ ca_crt_data.stdout }}
+            server: {{ cluster_server.stdout }}
+          name: kubernetes
+        contexts:
+        - context:
+            cluster: kubernetes
+            namespace: default
+            user: jenkins
+          name: jenkins
+        current-context: jenkins
+        users:
+        - name: jenkins
+          user:
+            token: {{ jenkins_token.stdout }}
+        EOF
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+
+- name: Fetch kubeconfig for Jenkins to local machine
+  hosts: localhost
+  tasks:
+    - name: Create directory for kubeconfig
+      file:
+        path: /root/project/devops/jenkins-docker
+        state: directory
+        mode: '0755'
+
+    - name: Fetch kubeconfig file using scp
+      delegate_to: localhost
+      become: true
+      ansible.builtin.command:
+        cmd: scp -i ~/.ssh/my-key-pair ec2-user@{{ hostvars['master']['ansible_host'] }}:/tmp/kubeconfig-jenkins.yaml /root/project/devops/jenkins-docker/kubeconfig-jenkins.yaml
+      args:
+        removes: /root/project/devops/jenkins-docker/kubeconfig-jenkins.yaml
+
+    - name: Export KUBECONFIG environment variable
+      shell: |
+        echo "export KUBECONFIG=/root/project/devops/jenkins-docker/kubeconfig-jenkins.yaml" >> ~/.bashrc
+        source ~/.bashrc
+      args:
+        executable: /bin/bash

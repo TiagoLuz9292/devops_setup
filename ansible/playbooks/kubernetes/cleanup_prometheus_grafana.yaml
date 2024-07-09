@@ -1,0 +1,62 @@
+---
+- name: Cleanup Prometheus, Grafana, and Helm
+  hosts: all
+  become: true
+  tasks:
+    - name: Uninstall Prometheus
+      shell: helm uninstall prometheus -n monitoring
+      ignore_errors: yes
+
+    - name: Uninstall Grafana
+      shell: helm uninstall grafana -n monitoring
+      ignore_errors: yes
+
+    - name: Delete monitoring namespace
+      shell: kubectl delete namespace monitoring
+      ignore_errors: yes
+
+    - name: Delete all PVCs in monitoring namespace
+      shell: kubectl delete pvc -n monitoring --all
+      ignore_errors: yes
+
+    - name: Remove Helm (Ubuntu)
+      apt:
+        name: helm
+        state: absent
+      when: ansible_os_family == "Debian"
+      ignore_errors: yes
+
+    - name: Remove Helm (CentOS/RHEL)
+      yum:
+        name: helm
+        state: absent
+      when: ansible_os_family == "RedHat"
+      ignore_errors: yes
+
+    - name: Remove Helm configuration and cache
+      file:
+        path: ~/.helm
+        state: absent
+      ignore_errors: yes
+
+    - name: Delete Prometheus operator cluster role
+      shell: kubectl delete clusterrole prometheus-operator
+      ignore_errors: yes
+
+    - name: Delete Prometheus operator cluster role binding
+      shell: kubectl delete clusterrolebinding prometheus-operator
+      ignore_errors: yes
+
+    - name: Delete Grafana cluster role binding
+      shell: kubectl delete clusterrolebinding grafana
+      ignore_errors: yes
+
+    - name: Delete Prometheus CRDs
+      shell: >
+        kubectl delete crd prometheuses.monitoring.coreos.com &&
+        kubectl delete crd alertmanagers.monitoring.coreos.com &&
+        kubectl delete crd prometheusrules.monitoring.coreos.com &&
+        kubectl delete crd servicemonitors.monitoring.coreos.com &&
+        kubectl delete crd podmonitors.monitoring.coreos.com &&
+        kubectl delete crd thanosrulers.monitoring.coreos.com
+      ignore_errors: yes

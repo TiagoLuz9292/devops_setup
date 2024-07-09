@@ -1,3 +1,14 @@
+
+module "iam_policies" {
+  source = "./iam-policies.tf"
+}
+
+module "iam_roles" {
+  source = "./iam-roles.tf"
+}
+
+
+
 # VPC (Virtual Private Cloud)
 # Creates a VPC with a specified CIDR block.
 resource "aws_vpc" "main" {
@@ -94,6 +105,14 @@ resource "aws_security_group" "instance" {
     from_port   = 8285
     to_port     = 8285
     protocol    = "udp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Allow Node Exporter (for hardware metrics)
+  ingress {
+    from_port   = 9100
+    to_port     = 9100
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 

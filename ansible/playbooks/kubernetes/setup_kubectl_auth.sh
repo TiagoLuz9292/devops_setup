@@ -1,0 +1,1 @@
+ansible-playbook -i /root/project/devops/kubernetes/inventory setup_kubectl_auth.yaml
