@@ -31,8 +31,14 @@ variable "key_name" {
 }
 
 
+variable "user_names" {
+  description = "List of user names"
+  type        = list(string)
+  default     = []
+}
+
 variable "user_public_keys" {
   description = "Map of user names to their public keys"
   type        = map(string)
-  default = {}
+  default     = {}
 }
