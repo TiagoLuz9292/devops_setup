@@ -29,3 +29,10 @@ variable "key_name" {
   type        = string
   default     = "devOps_training"  # Replace with your actual key pair name
 }
+
+
+variable "user_public_keys" {
+  description = "Map of user names to their public keys"
+  type        = map(string)
+  default = {}
+}

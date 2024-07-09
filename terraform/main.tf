@@ -1,14 +1,3 @@
-
-module "iam_policies" {
-  source = "./iam-policies.tf"
-}
-
-module "iam_roles" {
-  source = "./iam-roles.tf"
-}
-
-
-
 # VPC (Virtual Private Cloud)
 # Creates a VPC with a specified CIDR block.
 resource "aws_vpc" "main" {
@@ -144,8 +133,97 @@ resource "aws_security_group" "instance" {
   }
 }
 
-# EC2 Instances for Master and Workers
-# Creates EC2 instances for the Kubernetes master and worker nodes.
+###########################################################################################
+#                          iam-policies                                                   #
+###########################################################################################
+
+resource "aws_iam_policy" "s3_read_policy" {
+  name        = "S3ReadAccess"
+  description = "Policy to grant read access to S3 bucket"
+  policy      = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket",
+        "s3:GetObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::mybucket",
+        "arn:aws:s3:::mybucket/*"
+      ]
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_policy" "ec2_full_access_policy" {
+  name        = "EC2FullAccess"
+  description = "Policy to grant full access to EC2 instances"
+  policy      = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:*"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+}
+
+
+
+###########################################################################################
+#                          iam-roles                                                      #
+###########################################################################################
+
+
+resource "aws_iam_role" "developer_role" {
+  name = "developer-role"
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "ec2.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy_attachment" "developer_s3_policy" {
+  role       = aws_iam_role.developer_role.name
+  policy_arn = aws_iam_policy.s3_read_policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "developer_ec2_policy" {
+  role       = aws_iam_role.developer_role.name
+  policy_arn = aws_iam_policy.ec2_full_access_policy.arn
+}
+
+resource "aws_iam_instance_profile" "developer_instance_profile" {
+  name = "developer-instance-profile"
+  role = aws_iam_role.developer_role.name
+}
+
+
+###########################################################################################
+# EC2 Instances for Master and Workers                                                    #
+# Creates EC2 instances for the Kubernetes master and worker nodes.                       #
+###########################################################################################
 
 # Master Node
 resource "aws_instance" "master" {
@@ -155,6 +233,10 @@ resource "aws_instance" "master" {
   vpc_security_group_ids = [aws_security_group.instance.id]
   key_name      = var.key_name
   associate_public_ip_address = true
+
+  user_data = templatefile("${path.module}/user_data.sh.tmpl", {
+    user_public_keys = var.user_public_keys
+  })
 
   tags = {
     Name  = "K8s-Master"
@@ -170,6 +252,10 @@ resource "aws_instance" "worker" {
   vpc_security_group_ids = [aws_security_group.instance.id]
   key_name      = var.key_name
   associate_public_ip_address = true
+
+  user_data = templatefile("${path.module}/user_data.sh.tmpl", {
+    user_public_keys = var.user_public_keys
+  })
 
   tags = {
     Name  = "K8s-Worker"
@@ -217,3 +303,4 @@ resource "null_resource" "update_inventory" {
     master_ip = aws_eip.master_eip.public_ip
   }
 }
+
