@@ -1,0 +1,105 @@
+---
+- name: Install Helm, Prometheus, and Grafana
+  hosts: master
+  become: yes
+
+  tasks:
+    - name: Install Helm
+      shell: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        executable: /bin/bash
+
+    - name: Add Helm repositories
+      shell: |
+        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+        helm repo add grafana https://grafana.github.io/helm-charts
+        helm repo update
+      args:
+        executable: /bin/bash
+
+    - name: Install Prometheus
+      shell: |
+        helm install prometheus prometheus-community/kube-prometheus-stack
+        kubectl patch svc prometheus-kube-prometheus-prometheus -n default -p '{"spec": {"type": "NodePort"}}'
+      args:
+        executable: /bin/bash
+
+    - name: Install Grafana
+      shell: |
+        helm install grafana grafana/grafana
+        kubectl patch svc grafana -p '{"spec": {"type": "NodePort"}}'
+      args:
+        executable: /bin/bash
+
+    - name: Create Persistent Volumes
+      copy:
+        dest: /root/project/devops/kubernetes/prometheus/pvs.yaml
+        content: |
+          apiVersion: v1
+          kind: PersistentVolume
+          metadata:
+            name: prometheus-pv
+          spec:
+            capacity:
+              storage: 10Gi
+            accessModes:
+              - ReadWriteOnce
+            persistentVolumeReclaimPolicy: Retain
+            storageClassName: manual
+            hostPath:
+              path: /mnt/data/prometheus
+          ---
+          apiVersion: v1
+          kind: PersistentVolume
+          metadata:
+            name: alertmanager-pv
+          spec:
+            capacity:
+              storage: 10Gi
+            accessModes:
+              - ReadWriteOnce
+            persistentVolumeReclaimPolicy: Retain
+            storageClassName: manual
+            hostPath:
+              path: /mnt/data/alertmanager
+
+    - name: Apply Persistent Volumes
+      shell: kubectl apply -f /root/project/devops/kubernetes/prometheus/pvs.yaml
+      args:
+        executable: /bin/bash
+
+    - name: Create Persistent Volume Claims
+      copy:
+        dest: /root/project/devops/kubernetes/prometheus/pvcs.yaml
+        content: |
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: prometheus-server
+            namespace: default
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 10Gi
+            storageClassName: manual
+          ---
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: storage-prometheus-alertmanager-0
+            namespace: default
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 10Gi
+            storageClassName: manual
+
+    - name: Apply Persistent Volume Claims
+      shell: kubectl apply -f /root/project/devops/kubernetes/prometheus/pvcs.yaml
+      args:
+        executable: /bin/bash

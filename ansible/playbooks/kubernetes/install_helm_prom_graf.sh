@@ -1,0 +1,1 @@
+ansible-playbook -i /root/project/devops/kubernetes/inventory install_helm_prom_graf.yaml
