@@ -104,6 +104,14 @@ resource "aws_security_group" "instance" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Allow NodePort range
+  ingress {
+    from_port   = 30000
+    to_port     = 32767
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   # Allow all outbound traffic
   egress {
     from_port   = 0
@@ -160,11 +168,13 @@ resource "aws_eip" "worker_eip" {
   instance = aws_instance.worker.id
 }
 
-
 # Outputs
 # Provides output values for the VPC, subnet, and instances.
 output "master_public_ip" {
   value = aws_eip.master_eip.public_ip
+}
+output "worker_public_ip" {
+  value = aws_eip.worker_eip.public_ip
 }
 
 # Local-exec to update the inventory file

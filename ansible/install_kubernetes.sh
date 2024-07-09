@@ -1,1 +1,0 @@
-ansible-playbook -i /root/project/devops/kubernetes/inventory playbooks/install_kubernetes.yaml

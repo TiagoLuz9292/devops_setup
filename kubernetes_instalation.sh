@@ -188,9 +188,68 @@ EOF
    sudo yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
    sudo systemctl enable --now kubelet
    sudo kubeadm init --pod-network-cidr=192.168.0.0/16
+
+
+-------------------------------------------------------------------------------------------
+
+POST INIT CONFIGS
    
+   Add config for kubectl:
+
    mkdir -p $HOME/.kube
    sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
    sudo chown $(id -u):$(id -g) $HOME/.kube/config
    sudo cat $HOME/.kube/config
-   history
+
+   export KUBECONFIG=$HOME/.kube/config
+
+   apply network plugin on master:
+
+  kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml     
+
+
+   join worker node to cluster:
+
+  kubeadm join 13.48.237.22:6443 --token ds9nwo.4265n0z6j17qrtge \
+        --discovery-token-ca-cert-hash sha256:93ee9f7fc3032bc461f8e78ddf654b38ffb08a2c7d2bcac7f2da2719ae1daf31
+
+
+   
+
+
+---------------------------------------------------------------------------------
+
+jenkins authentication configuration
+
+
+kubectl create serviceaccount jenkins -n default
+kubectl create clusterrolebinding jenkins --clusterrole=cluster-admin --serviceaccount=default:jenkins
+TOKEN=$(kubectl create token jenkins -n default --duration=24h)
+kubectl create secret generic jenkins-secret --namespace default --from-literal=token=$TOKEN --from-file=ca.crt=/etc/kubernetes/pki/ca.crt
+kubectl patch serviceaccount jenkins -n default -p '{"secrets": [{"name": "jenkins-secret"}]}'
+cat <<EOF > /tmp/kubeconfig-jenkins.yaml
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    certificate-authority-data: $(kubectl get secret jenkins-secret -n default -o jsonpath="{.data['ca\.crt']}")
+    server: $(kubectl config view --minify -o jsonpath="{.clusters[0].cluster.server}")
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    namespace: default
+    user: jenkins
+  name: jenkins
+current-context: jenkins
+users:
+- name: jenkins
+  user:
+    token: $TOKEN
+EOF
+
+-----------------------------------------------------
+
+config prometheus for metrics
+
+kubectl edit configmap prometheus-prometheus-oper-prometheus -n monitoring

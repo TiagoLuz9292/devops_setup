@@ -30,3 +30,5 @@ output "worker_instance_ip" {
   description = "Public IP of the worker EC2 instance"
   value       = aws_instance.worker.public_ip
 }
+
+

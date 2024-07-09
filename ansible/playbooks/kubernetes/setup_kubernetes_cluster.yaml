@@ -13,12 +13,6 @@
     - name: Disable swap
       command: swapoff -a
 
-    - name: Disable swap permanently
-      cron:
-        name: "Disable swap on reboot"
-        special_time: reboot
-        job: "/sbin/swapoff -a"
-
     - name: Load kernel modules
       copy:
         dest: /etc/modules-load.d/k8s.conf
@@ -48,9 +42,6 @@
             url: "https://github.com/containerd/containerd/releases/download/v1.6.2/containerd-1.6.2-linux-amd64.tar.gz"
             dest: "/tmp/containerd-1.6.2-linux-amd64.tar.gz"
 
-        - name: Verify containerd checksum
-          shell: "sha256sum -c /tmp/containerd-1.6.2-linux-amd64.tar.gz.sha256sum"
-
         - name: Extract containerd
           unarchive:
             src: "/tmp/containerd-1.6.2-linux-amd64.tar.gz"
@@ -76,11 +67,14 @@
             dest: "/usr/local/sbin/runc"
             mode: '0755'
 
-        - name: Verify runc checksum
-          shell: "sha256sum -c /tmp/runc.amd64.sha256sum"
-
     - name: Install CNI plugins
       block:
+        - name: Create directory for CNI plugins
+          file:
+            path: /opt/cni/bin
+            state: directory
+            mode: '0755'
+
         - name: Download CNI plugins
           get_url:
             url: "https://github.com/containernetworking/plugins/releases/download/v1.1.1/cni-plugins-linux-amd64-v1.1.1.tgz"
@@ -108,11 +102,11 @@
             regexp: 'SystemdCgroup = false'
             replace: 'SystemdCgroup = true'
 
-        - name: Set sandbox image
+        - name: Set sandbox image in containerd config
           replace:
             path: /etc/containerd/config.toml
-            regexp: 'sandbox_image = "k8s.gcr.io/pause:3.2"'
-            replace: 'sandbox_image = "registry.k8s.io/pause:3.2"'
+            regexp: '^(\s*sandbox_image\s*=\s*).+"k8s.gcr.io/pause:3.6"'
+            replace: '\1"registry.k8s.io/pause:3.2"'
 
         - name: Restart containerd
           systemd:
@@ -132,7 +126,7 @@
             regexp: '^SELINUX=enforcing'
             replace: 'SELINUX=permissive'
 
-    - name: Add Kubernetes repository
+    - name: Add Kubernetes yum repository without exclude
       copy:
         dest: /etc/yum.repos.d/kubernetes.repo
         content: |
@@ -142,7 +136,6 @@
           enabled=1
           gpgcheck=1
           gpgkey=https://pkgs.k8s.io/core:/stable:/v1.30/rpm/repodata/repomd.xml.key
-          exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni
 
     - name: Install Kubernetes packages
       dnf:
@@ -151,16 +144,15 @@
           - kubeadm
           - kubectl
         state: present
-        exclude:
-          - kubelet
-          - kubeadm
-          - kubectl
-          - cri-tools
-          - kubernetes-cni
+
+    - name: Add exclude parameter to Kubernetes yum repository
+      lineinfile:
+        path: /etc/yum.repos.d/kubernetes.repo
+        regexp: '^exclude='
+        line: 'exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni'
+        insertafter: 'gpgkey=https://pkgs.k8s.io/core:/stable:/v1.30/rpm/repodata/repomd.xml.key'    
 
     - name: Enable and start kubelet
       systemd:
         name: kubelet
         enabled: yes
-
-    
