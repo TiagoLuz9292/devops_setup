@@ -107,3 +107,7 @@ Create the encryption configuration file:
 bash
 Copiar código
 sudo vi /etc/kubernetes/encryption-config.yaml
+
+
+sudo chmod 644 /etc/kubernetes/encryption-config.yaml
+sudo chown root:root /etc/kubernetes/encryption-config.yaml

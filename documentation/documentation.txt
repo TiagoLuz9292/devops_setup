@@ -1065,3 +1065,184 @@ sudo kubeadm init --pod-network-cidr=192.168.0.0/16
 
 sudo crictl runp /etc/kubernetes/manifests/kube-apiserver.yaml
 sudo crictl pods
+
+
+----------------------------------
+
+
+when api server is down and kubectl commands are returning connection refused, check the containers with containerd:
+
+sudo crictl ps -a
+
+
+
+----------------------------------
+
+ELASTIC KIBANA installation
+
+
+
+Deploy ElasticSearch:
+Now, we will create a custom values file for Kibana helm chart. Create a file values-2.yaml with the following content:
+
+replicas: 1
+minimumMasterNodes: 1
+
+ingress:
+  enabled: true
+  hosts:
+    - host: es-elk.s9.devopscloud.link #Change the hostname to the one you need
+      paths:
+        - path: /
+  
+volumeClaimTemplate:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 10Gi
+Now execute the following commands to add the Elastic Search helm repo:
+
+helm repo add elastic https://helm.elastic.co
+helm repo update
+Now to deploy the elastic search, execute the command:
+
+helm install elk-elasticsearch elastic/elasticsearch -f values-2.yaml --namespace logging --create-namespace
+To verify the elastic search is working fine, use the ingress host on browser.
+
+Deploy Kibana:
+Now, we will create a custom values file for Kibana helm chart. Create a file values-2.yaml with the following content:
+
+elasticsearchHosts: "http://elasticsearch-master:9200"
+ingress:
+  enabled: true
+  className: "nginx"
+  hosts:
+    - host: kibana-elk.s9.devopscloud.link
+      paths:
+        - path: /
+Now, to deploy the helm chart use the command:
+
+helm install elk-kibana elastic/kibana -f values-2.yamls
+To verify the kibana is working fine, use the ingress host on browser.
+
+Deploy the logstash:
+Now, we will create a custom values file for Logstash helm chart. Create a file values-2.yaml with the following content:
+
+persistence:
+  enabled: true
+
+logstashConfig:
+  logstash.yml: |
+    http.host: 0.0.0.0
+    xpack.monitoring.enabled: false
+
+logstashPipeline: 
+ logstash.conf: |
+    input {
+      beats {
+        port => 5044
+      }
+    }
+    output {
+      elasticsearch {
+        hosts => "http://elasticsearch-master.logging.svc.cluster.local:9200"
+        manage_template => false
+        index => "%{[@metadata][beat]}-%{+YYYY.MM.dd}"
+        document_type => "%{[@metadata][type]}"
+      }
+    }
+
+service:
+  type: ClusterIP
+  ports:
+    - name: beats
+      port: 5044
+      protocol: TCP
+      targetPort: 5044
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+Now to deploy the logstash, execute the following command:
+
+helm install elk-logstash elastic/logstash -f values-2.yaml
+Deploy the filebeat:
+Now, we will create a custom values file for Logstash helm chart. Create a file values-2.yaml with the following content:
+
+daemonset:
+  filebeatConfig:
+    filebeat.yml: |
+      filebeat.inputs:
+      - type: container
+        paths:
+          - /var/log/containers/*.log
+        processors:
+        - add_kubernetes_metadata:
+            host: ${NODE_NAME}
+            matchers:
+            - logs_path:
+                logs_path: "/var/log/containers/"
+
+      output.logstash:
+        hosts: ["elk-logstash-logstash:5044"]
+Now, to deploy the logstash use the following command:
+
+helm install elk-filebeat elastic/filebeat -f values-2.yaml
+
+---------------------------
+
+CLEANUP of old pods/jobs
+
+
+Question 1: Managing Pods
+To view only the running or pending pods and not the old ones, you can use kubectl get pods with additional flags to filter the output.
+
+Filtering Running or Pending Pods
+You can filter the pods based on their status using kubectl get pods and grep. Here's how:
+
+sh
+Copiar código
+kubectl get pods --all-namespaces | grep -E 'Running|Pending'
+Alternatively, you can use kubectl get pods with the --field-selector flag:
+
+sh
+Copiar código
+kubectl get pods --all-namespaces --field-selector=status.phase=Running,status.phase=Pending
+Cleaning Up Old Pods
+Old pods, especially those that have been terminated, can take up storage space. It's a good practice to clean up these pods. Here’s how to delete terminated pods:
+
+Delete Terminated Pods:
+sh
+Copiar código
+kubectl delete pod --field-selector=status.phase=Succeeded
+kubectl delete pod --field-selector=status.phase=Failed
+Clean Up Completed Jobs:
+If you are using jobs, ensure you clean up completed jobs:
+sh
+Copiar código
+kubectl delete job --all --field-selector=status.successful=1
+Set Up a CronJob for Cleanup:
+You can set up a cron job to periodically clean up old pods:
+sh
+Copiar código
+kubectl apply -f - <<EOF
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: cleanup-pods
+  namespace: default
+spec:
+  schedule: "0 0 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: kubectl
+            image: bitnami/kubectl
+            command: ["sh", "-c", "kubectl delete pod --field-selector=status.phase=Succeeded,status.phase=Failed"]
+          restartPolicy: OnFailure
+EOF
+
+------------------------------------
+
