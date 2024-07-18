@@ -12,7 +12,7 @@ KUBERNETES_VERSION="1.30"
 sudo swapoff -a
 
 # keeps the swaf off during reboot
-(crontab -l 2>/dev/null; echo "@reboot /sbin/swapoff -a") | crontab - || true
+#(crontab -l 2>/dev/null; echo "@reboot /sbin/swapoff -a") | crontab - || true
 sudo apt-get update -y
 
 
@@ -92,6 +92,7 @@ sudo apt-get update -y
 
 
 
+
 local_ip="$(ip --json addr show eth0 | jq -r '.[0].addr_info[] | select(.family == "inet") | .local')"
 cat > /etc/default/kubelet << EOF
 KUBELET_EXTRA_ARGS=--node-ip=$local_ip
@@ -99,6 +100,8 @@ EOF
 
 
 
+
+sudo kubeadm init --control-plane-endpoint="$MASTER_PUBLIC_IP" --apiserver-cert-extra-sans="$MASTER_PUBLIC_IP" --pod-network-cidr="$POD_CIDR" --node-name "$NODENAME" --ignore-preflight-errors Swap
 ----------------------------------------------------------------------------------------------
 
 
@@ -187,6 +190,10 @@ EOF
 
    sudo yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
    sudo systemctl enable --now kubelet
+
+   sudo kubeadm init --control-plane-endpoint="$MASTER_PUBLIC_IP" --apiserver-cert-extra-sans="$MASTER_PUBLIC_IP" --pod-network-cidr="$POD_CIDR" --node-name "$NODENAME" --ignore-preflight-errors Swap,ImagePull --kubernetes-version="v1.30.2"
+
+   
    sudo kubeadm init --pod-network-cidr=192.168.0.0/16
 
 

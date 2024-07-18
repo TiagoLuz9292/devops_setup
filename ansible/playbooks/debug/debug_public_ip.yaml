@@ -1,0 +1,13 @@
+---
+- name: Retrieve and print public IP
+  hosts: master
+  become: yes
+
+  tasks:
+    - name: Get public IP using curl
+      command: curl -s ifconfig.me
+      register: public_ip
+
+    - name: Print public IP
+      debug:
+        msg: "The public IP of the target server is: {{ public_ip.stdout }}"

@@ -1,1 +1,1 @@
-ansible-playbook -i /root/project/devops/kubernetes/inventory playbooks/setup_kubernetes_cluster.yaml
+ansible-playbook -i /root/project/devops/kubernetes/inventory /root/project/devops/ansible/playbooks/kubernetes/setup_kubernetes_cluster.yaml

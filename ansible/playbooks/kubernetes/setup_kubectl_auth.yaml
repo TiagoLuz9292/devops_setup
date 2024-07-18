@@ -3,6 +3,18 @@
   hosts: master
   become: true
   tasks:
+    - name: Get public IP using curl
+      command: curl -s ifconfig.me
+      register: public_ip
+
+    - name: Set master public IP fact
+      set_fact:
+        master_public_ip: "{{ public_ip.stdout }}"
+
+    - name: Print public IP
+      debug:
+        msg: "The public IP of the target server is: {{ master_public_ip }}"
+
     - name: Set KUBECONFIG environment variable
       set_fact:
         kubeconfig_path: "/etc/kubernetes/admin.conf"
@@ -63,12 +75,6 @@
       environment:
         KUBECONFIG: "{{ kubeconfig_path }}"
 
-    - name: Retrieve cluster server
-      command: kubectl config view --minify -o jsonpath="{.clusters[0].cluster.server}"
-      register: cluster_server
-      environment:
-        KUBECONFIG: "{{ kubeconfig_path }}"
-
     - name: Create kubeconfig file for Jenkins
       shell: |
         cat <<EOF > /tmp/kubeconfig-jenkins.yaml
@@ -77,7 +83,7 @@
         clusters:
         - cluster:
             certificate-authority-data: {{ ca_crt_data.stdout }}
-            server: {{ cluster_server.stdout }}
+            server: {{ master_public_ip }}
           name: kubernetes
         contexts:
         - context:
@@ -94,6 +100,10 @@
       environment:
         KUBECONFIG: "{{ kubeconfig_path }}"
 
+    - name: Set master public IP globally
+      set_fact:
+        global_master_public_ip: "{{ master_public_ip }}"    
+
 - name: Fetch kubeconfig for Jenkins to local machine
   hosts: localhost
   tasks:
@@ -107,9 +117,7 @@
       delegate_to: localhost
       become: true
       ansible.builtin.command:
-        cmd: scp -i ~/.ssh/my-key-pair ec2-user@{{ hostvars['master']['ansible_host'] }}:/tmp/kubeconfig-jenkins.yaml /root/project/devops/jenkins-docker/kubeconfig-jenkins.yaml
-      args:
-        removes: /root/project/devops/jenkins-docker/kubeconfig-jenkins.yaml
+        cmd: scp -i ~/.ssh/my-key-pair ec2-user@{{ hostvars['master']['global_master_public_ip'] }}:/tmp/kubeconfig-jenkins.yaml /root/project/devops/jenkins-docker/kubeconfig-jenkins.yaml
 
     - name: Export KUBECONFIG environment variable
       shell: |

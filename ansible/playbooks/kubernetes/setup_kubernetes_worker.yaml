@@ -1,21 +1,9 @@
 ---
-- name: Setup Kubernetes Cluster
-  hosts: master
+- name: Setup Kubernetes Worker Node
+  hosts: worker
   become: yes
 
   tasks:
-    - name: Get public IP using curl
-      command: curl -s ifconfig.me
-      register: public_ip
-
-    - name: Set master public IP fact
-      set_fact:
-        master_public_ip: "{{ public_ip.stdout }}"
-
-    - name: Print public IP
-      debug:
-        msg: "The public IP of the target server is: {{ master_public_ip }}"    
-
     - name: Update all packages
       dnf:
         name: "*"
@@ -169,6 +157,11 @@
         name: kubelet
         enabled: yes
 
+    - name: Install iproute package
+      dnf:
+        name: iproute
+        state: present
+
     - name: Install iproute-tc package
       dnf:
         name: iproute-tc
@@ -177,41 +170,7 @@
     - name: Ensure the hostname is resolvable
       lineinfile:
         path: /etc/hosts
-        line: "{{ ansible_default_ipv4.address }} {{ inventory_hostname }}"
+        line: "{{ ansible_default_ipv4.address }} {{ inventory_hostname }}"        
 
-    - name: Pre-pull Kubernetes images
-      command: kubeadm config images pull --kubernetes-version v1.30.2
- 
-
-    - name: Initialize Kubernetes cluster
-      command: kubeadm init --control-plane-endpoint="{{ master_public_ip }}" --apiserver-cert-extra-sans="{{ master_public_ip }}" --pod-network-cidr="10.244.0.0/16" --node-name "master" --ignore-preflight-errors=Swap,ImagePull --kubernetes-version v1.30.2
-      ignore_errors: yes
-
-    - name: Configure kubectl for the master node
-      shell: |
-        sudo mkdir -p /root/.kube
-        sudo cp -i /etc/kubernetes/admin.conf /root/.kube/config
-        sudo chown $(id -u):$(id -g) /root/.kube/config
-        export KUBECONFIG=/root/.kube/config
-        kubectl get nodes
-      become: yes  
-
-    - name: Apply Calico network plugin
-      shell: |
-        kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
-      environment:
-        KUBECONFIG: /etc/kubernetes/admin.conf
-
-    - name: Retrieve join command for worker nodes
-      shell: kubeadm token create --print-join-command
-      register: join_command
-
-    - name: Retrieve worker join command
-      shell: |
-        kubeadm token create --print-join-command > /tmp/join_command.sh
-
-    - name: Pull the join command to the admin server using public IP
-      delegate_to: localhost
-      shell: |
-        scp -i /root/.ssh/my-key-pair ec2-user@{{ master_public_ip }}:/tmp/join_command.sh /root/project/devops/terraform/join_command.sh
-      register: fetch_result
+    - name: Join the Kubernetes cluster
+      command: "{{ lookup('file', '/root/project/devops/terraform/join_command.sh') }}"
