@@ -2,8 +2,13 @@
 - name: Setup Kubernetes Worker Node
   hosts: worker
   become: yes
+  gather_facts: yes
 
   tasks:
+    - name: Print current worker IP
+      debug:
+        msg: "Running on host: {{ ansible_host }}"
+
     - name: Update all packages
       dnf:
         name: "*"

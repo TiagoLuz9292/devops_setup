@@ -1,1 +1,1 @@
-kubeadm join 13.60.155.240:6443 --token v04x0f.dnp98m9vheqsobsf --discovery-token-ca-cert-hash sha256:b10d9e2f67cee8b25c8e8a860ef0b63802f814b7c0b241a93a02ea4b15263db0 
+kubeadm join 51.20.48.186:6443 --token ikeuk2.1zhrkjdax14xn1og --discovery-token-ca-cert-hash sha256:b9ddf6029bec686a29ef759736f8df0b149db82442771f5e1eb89c79390576f7 

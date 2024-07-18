@@ -1,5 +1,5 @@
-[WARNING]: Found both group and host with same name: admin
 [WARNING]: Found both group and host with same name: master
+[WARNING]: Found both group and host with same name: admin
 
 PLAY [Setup Kubernetes Cluster] ************************************************
 
@@ -19,7 +19,7 @@ ok: [master]
 
 TASK [Print public IP] *********************************************************
 ok: [master] => {
-    "msg": "The public IP of the target server is: 13.60.155.240"
+    "msg": "The public IP of the target server is: 51.20.48.186"
 }
 
 TASK [Update all packages] *****************************************************

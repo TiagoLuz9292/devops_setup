@@ -4,9 +4,9 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu" {
   evaluation_periods  = 2
   metric_name         = "CPUUtilization"
   namespace           = "AWS/EC2"
-  period              = 300
+  period              = 60
   statistic           = "Average"
-  threshold           = 70
+  threshold           = 50
 
   alarm_description   = "This metric monitors the average CPU usage for the ASG."
   dimensions = {
@@ -22,9 +22,9 @@ resource "aws_cloudwatch_metric_alarm" "low_cpu" {
   evaluation_periods  = 2
   metric_name         = "CPUUtilization"
   namespace           = "AWS/EC2"
-  period              = 300
+  period              = 60
   statistic           = "Average"
-  threshold           = 30
+  threshold           = 20
 
   alarm_description   = "This metric monitors the average CPU usage for the ASG."
   dimensions = {

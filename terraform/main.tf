@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 # VPC (Virtual Private Cloud)
 # Creates a VPC with a specified CIDR block.
 resource "aws_vpc" "main" {
@@ -102,6 +104,7 @@ resource "aws_lb_listener" "k8s_listener" {
 }
 
 
+
 # Target Group
 
 resource "aws_lb_target_group" "k8s_target_group" {
@@ -124,6 +127,26 @@ resource "aws_lb_target_group" "k8s_target_group" {
   tags = {
     Name = "k8s-target-group"
   }
+}
+
+# Add this data source to get the instances in the autoscaling group
+data "aws_autoscaling_group" "asg" {
+  name = aws_autoscaling_group.k8s_asg.name
+}
+
+data "aws_instances" "asg_instances" {
+  filter {
+    name   = "instance.group-name"
+    values = [data.aws_autoscaling_group.asg.name]
+  }
+}
+
+# Update Target Group and Listener to connect with ASG
+resource "aws_lb_target_group_attachment" "asg_attachment" {
+  for_each            = toset(data.aws_instances.asg_instances.ids)
+  target_group_arn    = aws_lb_target_group.k8s_target_group.arn
+  target_id           = each.value
+  port                = 80
 }
 
 
@@ -401,24 +424,9 @@ resource "null_resource" "update_inventory" {
   depends_on = [aws_autoscaling_group.k8s_asg]
 
   provisioner "local-exec" {
-    command = <<EOT
-      echo "[all]" > /root/project/devops/kubernetes/inventory
-      echo "master ansible_host=${aws_eip.master_eip.public_ip} ansible_user=ec2-user" >> /root/project/devops/kubernetes/inventory
-      echo "admin ansible_host=${aws_eip.admin_eip.public_ip} ansible_user=ec2-user" >> /root/project/devops/kubernetes/inventory
-      echo "" >> /root/project/devops/kubernetes/inventory
-      echo "[master]" >> /root/project/devops/kubernetes/inventory
-      echo "master" >> /root/project/devops/kubernetes/inventory
-      echo "" >> /root/project/devops/kubernetes/inventory
-      echo "[workers]" >> /root/project/devops/kubernetes/inventory
-
+    command = <<-EOT
       WORKER_IPS=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=K8s-Worker" "Name=instance-state-name,Values=running" --query "Reservations[*].Instances[*].PublicIpAddress" --output text)
-      for IP in $WORKER_IPS; do
-        echo "worker ansible_host=$IP ansible_user=ec2-user" >> /root/project/devops/kubernetes/inventory
-      done
-
-      echo "" >> /root/project/devops/kubernetes/inventory
-      echo "[admin]" >> /root/project/devops/kubernetes/inventory
-      echo "admin" >> /root/project/devops/kubernetes/inventory
+      /root/project/devops/terraform/generate_inventory.sh ${aws_eip.master_eip.public_ip} ${aws_eip.admin_eip.public_ip} "$WORKER_IPS"
     EOT
   }
 
@@ -489,30 +497,7 @@ resource "null_resource" "provision_workers" {
       # Get the list of worker node IPs
       WORKER_IPS=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=K8s-Worker" "Name=instance-state-name,Values=running" --query "Reservations[*].Instances[*].PublicIpAddress" --output text)
 
-      # Add all existing worker IPs to known hosts to avoid SSH prompt
-      for IP in $WORKER_IPS; do
-        ssh-keyscan -H $IP >> ~/.ssh/known_hosts
-      done
-
-      # Remove the workers section if it exists
-      sed -i '/\[workers\]/,/^$/d' $INVENTORY_PATH
-
-      # Add workers to the inventory
-      echo "[workers]" >> $INVENTORY_PATH
-      for IP in $WORKER_IPS; do
-        echo "worker ansible_host=$IP ansible_user=ec2-user" >> $INVENTORY_PATH
-      done
-      echo "" >> $INVENTORY_PATH
-
-      # Ensure the admin section remains in the inventory
-      if ! grep -q '\[admin\]' $INVENTORY_PATH; then
-        echo "[admin]" >> $INVENTORY_PATH
-        echo "admin ansible_host=${aws_eip.admin_eip.public_ip} ansible_user=ec2-user" >> $INVENTORY_PATH
-      fi
-
-      # Run the Ansible playbook for each worker node
-      
-
+    
       # Wait for all worker instances to be available
       for WORKER_IP in $WORKER_IPS; do
         echo "Waiting for instance to be available at IP $WORKER_IP..."
@@ -522,7 +507,6 @@ resource "null_resource" "provision_workers" {
 
         # Add the worker IP to known hosts to avoid SSH prompt
         ssh-keyscan -H $WORKER_IP >> ~/.ssh/known_hosts
-
       done
 
 

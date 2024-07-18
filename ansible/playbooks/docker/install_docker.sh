@@ -1,1 +1,1 @@
-ansible-playbook -i /root/project/devops/kubernetes/inventory playbooks/install_docker.yml
+ansible-playbook -i /root/project/devops/kubernetes/inventory install_docker.yml

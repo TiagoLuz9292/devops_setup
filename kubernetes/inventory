@@ -1,14 +1,15 @@
 [all]
-master ansible_host=13.60.155.240 ansible_user=ec2-user
-admin ansible_host=16.170.142.80 ansible_user=ec2-user
+master ansible_host=51.20.48.186 ansible_user=ec2-user
+admin ansible_host=51.21.140.67 ansible_user=ec2-user
+worker1 ansible_host=51.20.251.234 ansible_user=ec2-user
+worker2 ansible_host=13.60.162.229 ansible_user=ec2-user
 
 [master]
-master
+master ansible_host=51.20.48.186 ansible_user=ec2-user
 
 [admin]
-admin
-[workers]
-worker ansible_host=16.171.64.86 ansible_user=ec2-user
-worker ansible_host=13.49.243.22 ansible_user=ec2-user
-worker ansible_host=16.171.174.19 ansible_user=ec2-user
+admin ansible_host=51.21.140.67 ansible_user=ec2-user
 
+[worker]
+worker1 ansible_host=51.20.251.234 ansible_user=ec2-user
+worker2 ansible_host=13.60.162.229 ansible_user=ec2-user
