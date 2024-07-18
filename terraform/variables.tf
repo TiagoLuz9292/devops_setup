@@ -18,6 +18,12 @@ variable "subnet_cidr" {
   default     = "10.0.1.0/24"
 }
 
+variable "admin_subnet_cidr" {
+  description = "CIDR block for the admin subnet"
+  type        = string
+  default     = "10.0.2.0/24"
+}
+
 variable "region" {
   description = "AWS region"
   type        = string
@@ -28,6 +34,12 @@ variable "key_name" {
   description = "Name of the SSH key pair"
   type        = string
   default     = "devOps_training"  # Replace with your actual key pair name
+}
+
+variable "private_key_path" {
+  description = "Path of private key"
+  type        = string
+  default     = "/root/.ssh/my-key-pair"  # Replace with your actual key pair name
 }
 
 

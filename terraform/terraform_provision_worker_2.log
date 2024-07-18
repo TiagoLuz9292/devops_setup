@@ -1,0 +1,106 @@
+[WARNING]: Found both group and host with same name: master
+[WARNING]: Found both group and host with same name: admin
+
+PLAY [Setup Kubernetes Worker Node] ********************************************
+
+TASK [Gathering Facts] *********************************************************
+[WARNING]: Platform linux on host worker is using the discovered Python
+interpreter at /usr/bin/python3.9, but future installation of another Python
+interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-
+core/2.16/reference_appendices/interpreter_discovery.html for more information.
+ok: [worker]
+
+TASK [Update all packages] *****************************************************
+ok: [worker]
+
+TASK [Disable swap] ************************************************************
+changed: [worker]
+
+TASK [Load kernel modules] *****************************************************
+ok: [worker]
+
+TASK [Load kernel modules immediately] *****************************************
+changed: [worker]
+
+TASK [command] *****************************************************************
+changed: [worker]
+
+TASK [Set system configurations for Kubernetes] ********************************
+ok: [worker]
+
+TASK [Apply sysctl params without reboot] **************************************
+changed: [worker]
+
+TASK [Download containerd] *****************************************************
+ok: [worker]
+
+TASK [Extract containerd] ******************************************************
+ok: [worker]
+
+TASK [Install containerd service] **********************************************
+ok: [worker]
+
+TASK [Enable and start containerd] *********************************************
+ok: [worker]
+
+TASK [Download runc] ***********************************************************
+ok: [worker]
+
+TASK [Create directory for CNI plugins] ****************************************
+ok: [worker]
+
+TASK [Download CNI plugins] ****************************************************
+ok: [worker]
+
+TASK [Extract CNI plugins] *****************************************************
+changed: [worker]
+
+TASK [Create containerd config directory] **************************************
+ok: [worker]
+
+TASK [Generate default containerd config] **************************************
+changed: [worker]
+
+TASK [Update containerd config] ************************************************
+changed: [worker]
+
+TASK [Set sandbox image in containerd config] **********************************
+changed: [worker]
+
+TASK [Restart containerd] ******************************************************
+changed: [worker]
+
+TASK [Set SELinux in permissive mode] ******************************************
+ok: [worker]
+
+TASK [Ensure SELinux is in permissive mode on reboot] **************************
+ok: [worker]
+
+TASK [Add Kubernetes yum repository without exclude] ***************************
+changed: [worker]
+
+TASK [Install Kubernetes packages] *********************************************
+ok: [worker]
+
+TASK [Add exclude parameter to Kubernetes yum repository] **********************
+changed: [worker]
+
+TASK [Enable and start kubelet] ************************************************
+ok: [worker]
+
+TASK [Install iproute package] *************************************************
+ok: [worker]
+
+TASK [Install iproute-tc package] **********************************************
+ok: [worker]
+
+TASK [Ensure the hostname is resolvable] ***************************************
+ok: [worker]
+
+TASK [Join the Kubernetes cluster] *********************************************
+fatal: [worker]: FAILED! => {"changed": true, "cmd": ["kubeadm", "join", "13.60.155.240:6443", "--token", "v04x0f.dnp98m9vheqsobsf", "--discovery-token-ca-cert-hash", "sha256:b10d9e2f67cee8b25c8e8a860ef0b63802f814b7c0b241a93a02ea4b15263db0"], "delta": "0:00:00.246678", "end": "2024-07-18 13:49:51.916383", "msg": "non-zero return code", "rc": 1, "start": "2024-07-18 13:49:51.669705", "stderr": "\t[WARNING Hostname]: hostname \"ip-10-0-3-52.eu-north-1.compute.internal\" could not be reached\n\t[WARNING Hostname]: hostname \"ip-10-0-3-52.eu-north-1.compute.internal\": lookup ip-10-0-3-52.eu-north-1.compute.internal on 10.0.0.2:53: no such host\nerror execution phase preflight: [preflight] Some fatal errors occurred:\n\t[ERROR FileAvailable--etc-kubernetes-kubelet.conf]: /etc/kubernetes/kubelet.conf already exists\n\t[ERROR Port-10250]: Port 10250 is in use\n\t[ERROR FileAvailable--etc-kubernetes-pki-ca.crt]: /etc/kubernetes/pki/ca.crt already exists\n[preflight] If you know what you are doing, you can make a check non-fatal with `--ignore-preflight-errors=...`\nTo see the stack trace of this error execute with --v=5 or higher", "stderr_lines": ["\t[WARNING Hostname]: hostname \"ip-10-0-3-52.eu-north-1.compute.internal\" could not be reached", "\t[WARNING Hostname]: hostname \"ip-10-0-3-52.eu-north-1.compute.internal\": lookup ip-10-0-3-52.eu-north-1.compute.internal on 10.0.0.2:53: no such host", "error execution phase preflight: [preflight] Some fatal errors occurred:", "\t[ERROR FileAvailable--etc-kubernetes-kubelet.conf]: /etc/kubernetes/kubelet.conf already exists", "\t[ERROR Port-10250]: Port 10250 is in use", "\t[ERROR FileAvailable--etc-kubernetes-pki-ca.crt]: /etc/kubernetes/pki/ca.crt already exists", "[preflight] If you know what you are doing, you can make a check non-fatal with `--ignore-preflight-errors=...`", "To see the stack trace of this error execute with --v=5 or higher"], "stdout": "[preflight] Running pre-flight checks", "stdout_lines": ["[preflight] Running pre-flight checks"]}
+
+PLAY RECAP *********************************************************************
+worker                     : ok=30   changed=11   unreachable=0    failed=1    skipped=0    rescued=0    ignored=0   
+

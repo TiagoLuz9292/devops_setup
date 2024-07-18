@@ -1,0 +1,132 @@
+[WARNING]: Found both group and host with same name: admin
+[WARNING]: Found both group and host with same name: master
+
+PLAY [Setup Kubernetes Cluster] ************************************************
+
+TASK [Gathering Facts] *********************************************************
+[WARNING]: Platform linux on host master is using the discovered Python
+interpreter at /usr/bin/python3.9, but future installation of another Python
+interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-
+core/2.16/reference_appendices/interpreter_discovery.html for more information.
+ok: [master]
+
+TASK [Get public IP using curl] ************************************************
+changed: [master]
+
+TASK [Set master public IP fact] ***********************************************
+ok: [master]
+
+TASK [Print public IP] *********************************************************
+ok: [master] => {
+    "msg": "The public IP of the target server is: 13.60.155.240"
+}
+
+TASK [Update all packages] *****************************************************
+ok: [master]
+
+TASK [Disable swap] ************************************************************
+changed: [master]
+
+TASK [Load kernel modules] *****************************************************
+changed: [master]
+
+TASK [Load kernel modules immediately] *****************************************
+changed: [master]
+
+TASK [command] *****************************************************************
+changed: [master]
+
+TASK [Set system configurations for Kubernetes] ********************************
+changed: [master]
+
+TASK [Apply sysctl params without reboot] **************************************
+changed: [master]
+
+TASK [Download containerd] *****************************************************
+changed: [master]
+
+TASK [Extract containerd] ******************************************************
+changed: [master]
+
+TASK [Install containerd service] **********************************************
+changed: [master]
+
+TASK [Enable and start containerd] *********************************************
+changed: [master]
+
+TASK [Download runc] ***********************************************************
+changed: [master]
+
+TASK [Create directory for CNI plugins] ****************************************
+changed: [master]
+
+TASK [Download CNI plugins] ****************************************************
+changed: [master]
+
+TASK [Extract CNI plugins] *****************************************************
+changed: [master]
+
+TASK [Create containerd config directory] **************************************
+changed: [master]
+
+TASK [Generate default containerd config] **************************************
+changed: [master]
+
+TASK [Update containerd config] ************************************************
+changed: [master]
+
+TASK [Set sandbox image in containerd config] **********************************
+changed: [master]
+
+TASK [Restart containerd] ******************************************************
+changed: [master]
+
+TASK [Set SELinux in permissive mode] ******************************************
+ok: [master]
+
+TASK [Ensure SELinux is in permissive mode on reboot] **************************
+ok: [master]
+
+TASK [Add Kubernetes yum repository without exclude] ***************************
+changed: [master]
+
+TASK [Install Kubernetes packages] *********************************************
+changed: [master]
+
+TASK [Add exclude parameter to Kubernetes yum repository] **********************
+changed: [master]
+
+TASK [Enable and start kubelet] ************************************************
+changed: [master]
+
+TASK [Install iproute-tc package] **********************************************
+changed: [master]
+
+TASK [Ensure the hostname is resolvable] ***************************************
+changed: [master]
+
+TASK [Pre-pull Kubernetes images] **********************************************
+changed: [master]
+
+TASK [Initialize Kubernetes cluster] *******************************************
+changed: [master]
+
+TASK [Configure kubectl for the master node] ***********************************
+changed: [master]
+
+TASK [Apply Calico network plugin] *********************************************
+changed: [master]
+
+TASK [Retrieve join command for worker nodes] **********************************
+changed: [master]
+
+TASK [Retrieve worker join command] ********************************************
+changed: [master]
+
+TASK [Pull the join command to the admin server using public IP] ***************
+changed: [master -> localhost]
+
+PLAY RECAP *********************************************************************
+master                     : ok=39   changed=33   unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+

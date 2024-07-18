@@ -1,0 +1,106 @@
+[WARNING]: Found both group and host with same name: master
+[WARNING]: Found both group and host with same name: admin
+
+PLAY [Setup Kubernetes Worker Node] ********************************************
+
+TASK [Gathering Facts] *********************************************************
+[WARNING]: Platform linux on host worker is using the discovered Python
+interpreter at /usr/bin/python3.9, but future installation of another Python
+interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-
+core/2.16/reference_appendices/interpreter_discovery.html for more information.
+ok: [worker]
+
+TASK [Update all packages] *****************************************************
+ok: [worker]
+
+TASK [Disable swap] ************************************************************
+changed: [worker]
+
+TASK [Load kernel modules] *****************************************************
+changed: [worker]
+
+TASK [Load kernel modules immediately] *****************************************
+changed: [worker]
+
+TASK [command] *****************************************************************
+changed: [worker]
+
+TASK [Set system configurations for Kubernetes] ********************************
+changed: [worker]
+
+TASK [Apply sysctl params without reboot] **************************************
+changed: [worker]
+
+TASK [Download containerd] *****************************************************
+changed: [worker]
+
+TASK [Extract containerd] ******************************************************
+changed: [worker]
+
+TASK [Install containerd service] **********************************************
+changed: [worker]
+
+TASK [Enable and start containerd] *********************************************
+changed: [worker]
+
+TASK [Download runc] ***********************************************************
+changed: [worker]
+
+TASK [Create directory for CNI plugins] ****************************************
+changed: [worker]
+
+TASK [Download CNI plugins] ****************************************************
+changed: [worker]
+
+TASK [Extract CNI plugins] *****************************************************
+changed: [worker]
+
+TASK [Create containerd config directory] **************************************
+changed: [worker]
+
+TASK [Generate default containerd config] **************************************
+changed: [worker]
+
+TASK [Update containerd config] ************************************************
+changed: [worker]
+
+TASK [Set sandbox image in containerd config] **********************************
+changed: [worker]
+
+TASK [Restart containerd] ******************************************************
+changed: [worker]
+
+TASK [Set SELinux in permissive mode] ******************************************
+ok: [worker]
+
+TASK [Ensure SELinux is in permissive mode on reboot] **************************
+ok: [worker]
+
+TASK [Add Kubernetes yum repository without exclude] ***************************
+changed: [worker]
+
+TASK [Install Kubernetes packages] *********************************************
+changed: [worker]
+
+TASK [Add exclude parameter to Kubernetes yum repository] **********************
+changed: [worker]
+
+TASK [Enable and start kubelet] ************************************************
+changed: [worker]
+
+TASK [Install iproute package] *************************************************
+ok: [worker]
+
+TASK [Install iproute-tc package] **********************************************
+changed: [worker]
+
+TASK [Ensure the hostname is resolvable] ***************************************
+changed: [worker]
+
+TASK [Join the Kubernetes cluster] *********************************************
+changed: [worker]
+
+PLAY RECAP *********************************************************************
+worker                     : ok=31   changed=26   unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
