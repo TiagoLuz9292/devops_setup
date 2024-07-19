@@ -1,4 +1,4 @@
-# Variable definitions for instance type, VPC and subnet CIDR blocks, region, and SSH key pair name.
+'# Variable definitions for instance type, VPC and subnet CIDR blocks, region, and SSH key pair name.
 
 variable "instance_type" {
   description = "Type of EC2 instance"
@@ -49,4 +49,4 @@ variable "user_public_keys" {
   description = "Map of user names to their public keys"
   type        = map(string)
   default     = {}
-}
+}'
