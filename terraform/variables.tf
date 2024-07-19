@@ -18,11 +18,7 @@ variable "subnet_cidr" {
   default     = "10.0.1.0/24"
 }
 
-variable "admin_subnet_cidr" {
-  description = "CIDR block for the admin subnet"
-  type        = string
-  default     = "10.0.2.0/24"
-}
+
 
 variable "region" {
   description = "AWS region"

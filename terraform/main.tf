@@ -35,16 +35,7 @@ resource "aws_subnet" "public2" {
 }
 
 
-# Admin Subnet
-resource "aws_subnet" "admin" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = var.admin_subnet_cidr
-  map_public_ip_on_launch = true
 
-  tags = {
-    Name = "admin-subnet"
-  }
-}
 
 # Internet Gateway
 # Creates an internet gateway to allow internet access to the instances.
@@ -85,11 +76,6 @@ resource "aws_route_table_association" "public_association2" {
   route_table_id = aws_route_table.routetable.id
 }
 
-# Route Table Association for Admin Subnet
-resource "aws_route_table_association" "admin_association" {
-  subnet_id      = aws_subnet.admin.id
-  route_table_id = aws_route_table.routetable.id
-}
 # Listener to forward from elb to target group
 
 resource "aws_lb_listener" "k8s_listener" {
@@ -373,29 +359,7 @@ resource "aws_iam_instance_profile" "developer_instance_profile" {
 # EC2 Instance for Admin server                                                           #
 ###########################################################################################
 
-# Admin Server
-resource "aws_instance" "admin" {
-  ami           = "ami-052387465d846f3fc"  # Change to an appropriate AMI ID for your region
-  instance_type = "t3.medium"
-  subnet_id     = aws_subnet.admin.id
-  vpc_security_group_ids = [aws_security_group.instance.id]
-  key_name      = var.key_name
-  associate_public_ip_address = true
 
-  user_data = templatefile("${path.module}/user_data.sh.tmpl", {
-    user_public_keys = var.user_public_keys
-  })
-
-  tags = {
-    Name  = "Admin-Server"
-    Group = "Admin"
-  }
-}
-
-# Allocate Elastic IP for Admin Server
-resource "aws_eip" "admin_eip" {
-  instance = aws_instance.admin.id
-}
 
 
 ###########################################################################################
@@ -426,7 +390,7 @@ resource "null_resource" "update_inventory" {
   provisioner "local-exec" {
     command = <<-EOT
       WORKER_IPS=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=K8s-Worker" "Name=instance-state-name,Values=running" --query "Reservations[*].Instances[*].PublicIpAddress" --output text)
-      /root/project/devops/terraform/generate_inventory.sh ${aws_eip.master_eip.public_ip} ${aws_eip.admin_eip.public_ip} "$WORKER_IPS"
+      /home/ec2-user/infrastructure/devops_setup/terraform/generate_inventory.sh
     EOT
   }
 
