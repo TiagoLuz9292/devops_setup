@@ -4,10 +4,10 @@
 USER_HOME=$(eval echo ~${SUDO_USER:-$USER})
 
 # Create the required directory structure
-mkdir -p "$USER_HOME/infrastructure"
+mkdir -p "$USER_HOME"
 
 # Define the environment variable and its value
-DEVOPS_DIR="$USER_HOME/infrastructure/devops_setup"
+DEVOPS_DIR="$USER_HOME/devops_setup"
 INVENTORY_DIR="$DEVOPS_DIR/kubernetes/inventory"
 K8S_PLAYBOOK_DIR="$DEVOPS_DIR/ansible/playbooks/kubernetes"
 
@@ -34,7 +34,7 @@ export K8S_PLAYBOOK_DIR="$K8S_PLAYBOOK_DIR"
 
 # Add command aliases
 if ! grep -q "alias devops=" "$USER_HOME/.bashrc"; then
-    echo "alias devops='cd /home/ec2-user/infrastructure/devops_setup'" >> "$USER_HOME/.bashrc"
+    echo "alias devops='cd /home/ec2-user/devops_setup'" >> "$USER_HOME/.bashrc"
 fi
 
 if ! grep -q "alias ans_k8s=" "$USER_HOME/.bashrc"; then
