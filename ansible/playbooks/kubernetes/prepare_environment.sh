@@ -1,1 +1,1 @@
-ansible-playbook -i /root/project/devops/kubernetes/inventory playbooks/prepare_environment.yml
+ansible-playbook -i $INVENTORY_DIR $K8S_PLAYBOOK_DIR/prepare_environment.yml

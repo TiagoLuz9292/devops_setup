@@ -213,5 +213,5 @@
     - name: Pull the join command to the admin server using public IP
       delegate_to: localhost
       shell: |
-        scp -i /root/.ssh/my-key-pair ec2-user@{{ master_public_ip }}:/tmp/join_command.sh /root/project/devops/terraform/join_command.sh
+        scp -i /home/ec2-user/.ssh/my-key-pair ec2-user@{{ master_public_ip }}:/tmp/join_command.sh /home/ec2-user/infrastructure/devops_setup/terraform/join_command.sh
       register: fetch_result

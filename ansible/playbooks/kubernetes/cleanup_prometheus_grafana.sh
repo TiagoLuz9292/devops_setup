@@ -1,1 +1,1 @@
-ansible-playbook -i /root/project/devops/kubernetes/inventory cleanup_prometheus_grafana.yaml
+ansible-playbook -i $INVENTORY_DIR $K8S_PLAYBOOK_DIR/cleanup_prometheus_grafana.yaml

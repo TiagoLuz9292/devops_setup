@@ -3,17 +3,17 @@
   hosts: master
   become: true
   tasks:
-    - name: Get public IP using curl
-      command: curl -s ifconfig.me
-      register: public_ip
+    - name: Get private IP using curl
+      command: curl -s http://169.254.169.254/latest/meta-data/local-ipv4
+      register: private_ip
 
-    - name: Set master public IP fact
+    - name: Set master private IP fact
       set_fact:
-        master_public_ip: "{{ public_ip.stdout }}"
+        master_private_ip: "{{ private_ip.stdout }}"
 
-    - name: Print public IP
+    - name: Print private IP
       debug:
-        msg: "The public IP of the target server is: {{ master_public_ip }}"
+        msg: "The private IP of the target server is: {{ master_private_ip }}"
 
     - name: Set KUBECONFIG environment variable
       set_fact:
@@ -83,7 +83,7 @@
         clusters:
         - cluster:
             certificate-authority-data: {{ ca_crt_data.stdout }}
-            server: {{ master_public_ip }}
+            server: https://{{ master_private_ip }}:6443
           name: kubernetes
         contexts:
         - context:
@@ -100,16 +100,16 @@
       environment:
         KUBECONFIG: "{{ kubeconfig_path }}"
 
-    - name: Set master public IP globally
+    - name: Set master private IP globally
       set_fact:
-        global_master_public_ip: "{{ master_public_ip }}"    
+        global_master_private_ip: "{{ master_private_ip }}"    
 
 - name: Fetch kubeconfig for Jenkins to local machine
   hosts: localhost
   tasks:
     - name: Create directory for kubeconfig
       file:
-        path: /root/project/devops/jenkins-docker
+        path: /home/ec2-user/infrastructure/devops_setup/jenkins-docker
         state: directory
         mode: '0755'
 
@@ -117,11 +117,12 @@
       delegate_to: localhost
       become: true
       ansible.builtin.command:
-        cmd: scp -i ~/.ssh/my-key-pair ec2-user@{{ hostvars['master']['global_master_public_ip'] }}:/tmp/kubeconfig-jenkins.yaml /root/project/devops/jenkins-docker/kubeconfig-jenkins.yaml
+        cmd: scp -i /home/ec2-user/.ssh/my-key-pair ec2-user@{{ hostvars['master']['global_master_private_ip'] }}:/tmp/kubeconfig-jenkins.yaml /home/ec2-user/infrastructure/devops_setup/jenkins-docker/kubeconfig-jenkins.yaml
 
     - name: Export KUBECONFIG environment variable
       shell: |
-        echo "export KUBECONFIG=/root/project/devops/jenkins-docker/kubeconfig-jenkins.yaml" >> ~/.bashrc
+        export KUBECONFIG=/home/ec2-user/infrastructure/devops_setup/jenkins-docker/kubeconfig-jenkins.yaml
+        echo "export KUBECONFIG=/home/ec2-user/infrastructure/devops_setup/jenkins-docker/kubeconfig-jenkins.yaml" >> ~/.bashrc
         source ~/.bashrc
       args:
         executable: /bin/bash

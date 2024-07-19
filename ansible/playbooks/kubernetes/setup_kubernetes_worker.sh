@@ -1,1 +1,1 @@
-ansible-playbook -i /root/project/devops/kubernetes/inventory /root/project/devops/ansible/playbooks/kubernetes/setup_kubernetes_worker.yaml -vvv
+ansible-playbook -i $INVENTORY_DIR $K8S_PLAYBOOK_DIR/setup_kubernetes_worker.yaml
