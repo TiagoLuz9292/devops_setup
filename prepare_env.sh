@@ -2,7 +2,8 @@ sudo yum install -y yum-utils
 sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
 sudo yum -y install terraform
 
-ssh-keygen -t ed25519 -C "tiagoluz92@gmail.com"
+#copy ed25519 amd ed25519.pub key into new server 
+
 eval "$(ssh-agent -s)"
 ssh-add ~/.ssh/id_ed25519
 
