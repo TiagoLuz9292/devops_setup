@@ -13,7 +13,7 @@ variable "key_name" {
 variable "private_key_path" {
   description = "Path of private key"
   type        = string
-  default     = "/root/.ssh/my-key-pair"
+  default     = "/home/ec2-user/.ssh/my-key-pair"
 }
 
 variable "region" {
@@ -38,4 +38,14 @@ variable "min_size" {
   description = "Minimum size for ASG"
   type        = number
   default     = 2
+}
+
+variable "worker_key_name" {
+  description = "The name of the key pair to use for EC2 instances"
+  type        = string
+}
+
+variable "admin_server_private_ip" {
+  description = "The private IP address of the admin server"
+  type        = string
 }

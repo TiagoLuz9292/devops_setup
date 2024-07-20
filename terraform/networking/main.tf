@@ -177,3 +177,25 @@ resource "aws_security_group" "instance" {
     Name = "instance-security-group"
   }
 }
+
+resource "aws_lb_target_group" "k8s_target_group" {
+  name        = "k8s-target-group"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "instance"
+
+  health_check {
+    interval            = 30
+    path                = "/"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = 5
+    unhealthy_threshold = 2
+    healthy_threshold   = 2
+  }
+
+  tags = {
+    Name = "k8s-target-group"
+  }
+}

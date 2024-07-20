@@ -109,7 +109,7 @@
   tasks:
     - name: Create directory for kubeconfig
       file:
-        path: /home/ec2-user/infrastructure/devops_setup/jenkins-docker
+        path: /home/ec2-user/devops_setup/jenkins-docker
         state: directory
         mode: '0755'
 
@@ -117,12 +117,12 @@
       delegate_to: localhost
       become: true
       ansible.builtin.command:
-        cmd: scp -i /home/ec2-user/.ssh/my-key-pair ec2-user@{{ hostvars['master']['global_master_private_ip'] }}:/tmp/kubeconfig-jenkins.yaml /home/ec2-user/infrastructure/devops_setup/jenkins-docker/kubeconfig-jenkins.yaml
+        cmd: scp -i /home/ec2-user/.ssh/my-key-pair ec2-user@{{ hostvars['master']['global_master_private_ip'] }}:/tmp/kubeconfig-jenkins.yaml /home/ec2-user/devops_setup/jenkins-docker/kubeconfig-jenkins.yaml
 
     - name: Export KUBECONFIG environment variable
       shell: |
-        export KUBECONFIG=/home/ec2-user/infrastructure/devops_setup/jenkins-docker/kubeconfig-jenkins.yaml
-        echo "export KUBECONFIG=/home/ec2-user/infrastructure/devops_setup/jenkins-docker/kubeconfig-jenkins.yaml" >> ~/.bashrc
+        export KUBECONFIG=/home/ec2-user/devops_setup/jenkins-docker/kubeconfig-jenkins.yaml
+        echo "export KUBECONFIG=/home/ec2-user/devops_setup/jenkins-docker/kubeconfig-jenkins.yaml" >> ~/.bashrc
         source ~/.bashrc
       args:
         executable: /bin/bash

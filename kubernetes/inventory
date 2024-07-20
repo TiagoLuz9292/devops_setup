@@ -1,11 +1,15 @@
 [all]
-master ansible_host=10.0.1.103 ansible_user=ec2-user
-admin ansible_host=10.0.2.120 ansible_user=ec2-user
+master ansible_host=10.0.1.171 ansible_user=ec2-user
+admin ansible_host=10.0.3.9 ansible_user=ec2-user
+worker1 ansible_host=10.0.1.178 ansible_user=ec2-user
+worker2 ansible_host=10.0.2.35 ansible_user=ec2-user
 
 [master]
-master ansible_host=10.0.1.103 ansible_user=ec2-user
+master ansible_host=10.0.1.171 ansible_user=ec2-user
 
 [admin]
-admin ansible_host=10.0.2.120 ansible_user=ec2-user
+admin ansible_host=10.0.3.9 ansible_user=ec2-user
 
 [worker]
+worker1 ansible_host=10.0.1.178 ansible_user=ec2-user
+worker2 ansible_host=10.0.2.35 ansible_user=ec2-user

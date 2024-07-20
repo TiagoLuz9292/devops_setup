@@ -1,1 +1,1 @@
-ansible-playbook -i $INVENTORY_DIR $K8S_PLAYBOOK_DIR/setup_kubernetes_cluster.yaml
+ansible-playbook -i $INVENTORY_DIR $K8S_PLAYBOOK_DIR/setup_kubernetes_cluster.yaml -vvv

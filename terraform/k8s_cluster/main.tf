@@ -6,6 +6,14 @@ data "terraform_remote_state" "networking" {
   }
 }
 
+data "terraform_remote_state" "admin" {
+  backend = "local"
+  config = {
+    path = "../admin/terraform.tfstate"
+  }
+}
+
+
 # Create the Kubernetes master instance
 resource "aws_instance" "master" {
   ami           = "ami-052387465d846f3fc"  # Change to an appropriate AMI ID for your region
@@ -26,7 +34,7 @@ resource "aws_launch_template" "worker" {
   name_prefix   = "k8s-worker-"
   image_id      = "ami-052387465d846f3fc"  # Change to an appropriate AMI ID for your region
   instance_type = "t3.medium"
-  key_name      = var.key_name
+  key_name      = var.worker_key_name
 
   network_interfaces {
     associate_public_ip_address = true
@@ -40,6 +48,35 @@ resource "aws_launch_template" "worker" {
       Group = "Kubernetes"
     }
   }
+
+  user_data = base64encode(<<-EOF
+    #!/bin/bash
+    # Install necessary packages
+    yum update -y
+    yum install -y aws-cli jq
+
+    # Retrieve the private key from SSM Parameter Store
+    PRIVATE_KEY=$(aws ssm get-parameter --name "WorkerPrivateKey" --with-decryption --query "Parameter.Value" --output text)
+
+    # Create .ssh directory and set permissions
+    mkdir -p /home/ec2-user/.ssh
+    chmod 700 /home/ec2-user/.ssh
+
+    # Save the private key to a file and set permissions
+    echo "$PRIVATE_KEY" > /home/ec2-user/.ssh/key-pair
+    chmod 600 /home/ec2-user/.ssh/key-pair
+    chown ec2-user:ec2-user /home/ec2-user/.ssh/key-pair
+
+    # Add the admin server to known hosts to avoid SSH prompt
+    ssh-keyscan -H ${data.terraform_remote_state.admin.outputs.admin_server_private_ip} >> /home/ec2-user/.ssh/known_hosts
+
+    # Test SSH connection
+    ssh -i /home/ec2-user/.ssh/key-pair ec2-user@${data.terraform_remote_state.admin.outputs.admin_server_private_ip} "echo 'SSH connection successful'"
+
+    # Execute the playbook to configure the new EC2 instance
+    ssh -i /home/ec2-user/.ssh/key-pair ec2-user@${data.terraform_remote_state.admin.outputs.admin_server_private_ip} "/home/ec2-user/devops_setup/ansible/playbooks/kubernetes/setup_kubernetes_worker.sh"
+  EOF
+  )
 }
 
 resource "aws_autoscaling_group" "k8s_asg" {
@@ -87,7 +124,7 @@ resource "null_resource" "update_inventory" {
   provisioner "local-exec" {
     command = <<-EOT
       WORKER_IPS=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=K8s-Worker" "Name=instance-state-name,Values=running" --query "Reservations[*].Instances[*].PublicIpAddress" --output text)
-      /root/project/devops/terraform/generate_inventory.sh
+      /home/ec2-user/devops_setup/terraform/generate_inventory.sh
     EOT
   }
 
@@ -105,8 +142,13 @@ resource "null_resource" "provision_master" {
       #!/bin/bash
       set -e
 
-      MASTER_IP=${aws_eip.master_eip.public_ip}
+      MASTER_IP=${aws_instance.master.private_ip}
       PRIVATE_KEY_PATH=${var.private_key_path}
+
+      # Ensure correct permissions for the private key
+      chmod 600 $PRIVATE_KEY_PATH
+      eval "$(ssh-agent -s)"
+      ssh-add $PRIVATE_KEY_PATH
 
       # Wait until the instance is available
       while ! nc -z -w5 $MASTER_IP 22; do
@@ -115,11 +157,17 @@ resource "null_resource" "provision_master" {
       done
 
       # Add the master IP to known hosts to avoid SSH prompt
+      ssh-keygen -R $MASTER_IP || true
       ssh-keyscan -H $MASTER_IP >> ~/.ssh/known_hosts
 
-      # Run the Ansible playbook
-      echo "Starting the Ansible Playbook for kubernetes instalation on master"
-      bash /root/project/devops/ansible/playbooks/kubernetes/setup_kubernetes_cluster.sh $MASTER_IP $PRIVATE_KEY_PATH > terraform_provision_master.log 2>&1
+      # Test SSH connection
+      echo "Testing SSH connection to master..."
+      ssh -o StrictHostKeyChecking=no -i $PRIVATE_KEY_PATH ec2-user@$MASTER_IP "echo 'SSH connection successful'"
+
+      # Run the script on the admin server to execute the Ansible playbook
+      echo "Starting the Ansible Playbook for Kubernetes installation on master"
+      echo "private key path: $PRIVATE_KEY_PATH"
+      bash /home/ec2-user/devops_setup/ansible/playbooks/kubernetes/setup_kubernetes_cluster.sh $MASTER_IP $PRIVATE_KEY_PATH > terraform_provision_master.log 2>&1
       if [ $? -ne 0 ]; then
         echo "Failed to run setup_kubernetes_cluster.sh. Check terraform_provision_master.log for details."
         exit 1
@@ -127,7 +175,7 @@ resource "null_resource" "provision_master" {
 
       # Run the Ansible playbook to configure kubectl authentication
       echo "Starting the Ansible Playbook for kubectl authentication setup"
-      bash /root/project/devops/ansible/playbooks/kubernetes/setup_kubectl_auth.sh $MASTER_IP $PRIVATE_KEY_PATH > kubeconfig_setup.log 2>&1
+      bash /home/ec2-user/devops_setup/ansible/playbooks/kubernetes/setup_kubectl_auth.sh $MASTER_IP $PRIVATE_KEY_PATH > kubeconfig_setup.log 2>&1
       if [ $? -ne 0 ]; then
         echo "Failed to run setup_kubectl_auth.sh. Check kubeconfig_setup.log for details."
         exit 1
@@ -136,7 +184,8 @@ resource "null_resource" "provision_master" {
   }
 }
 
-# Provision worker instances
+
+# Povision worker instances
 resource "null_resource" "provision_workers" {
   depends_on = [aws_autoscaling_group.k8s_asg, null_resource.provision_master]
 
@@ -145,9 +194,9 @@ resource "null_resource" "provision_workers" {
       #!/bin/bash
       set -e
 
-      MASTER_IP=${aws_eip.master_eip.public_ip}
+      MASTER_IP=${aws_instance.master.private_ip}
       PRIVATE_KEY_PATH=${var.private_key_path}
-      INVENTORY_PATH="/root/project/devops/kubernetes/inventory"
+      INVENTORY_PATH="/home/ec2-user/devops_setup/kubernetes/inventory"
 
       # Check if the master node is ready
       while ! ssh -o StrictHostKeyChecking=no -i $PRIVATE_KEY_PATH ec2-user@$MASTER_IP sudo kubectl get nodes; do
@@ -156,7 +205,7 @@ resource "null_resource" "provision_workers" {
       done
 
       # Get the list of worker node IPs
-      WORKER_IPS=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=K8s-Worker" "Name=instance-state-name,Values=running" --query "Reservations[*].Instances[*].PublicIpAddress" --output text)
+      WORKER_IPS=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=K8s-Worker" "Name=instance-state-name,Values=running" --query "Reservations[*].Instances[*].PrivateIpAddress" --output text)
 
       # Wait for all worker instances to be available
       for WORKER_IP in $WORKER_IPS; do
@@ -172,7 +221,7 @@ resource "null_resource" "provision_workers" {
       # Run the Ansible playbook
       echo "Starting the Ansible Playbook for Kubernetes setup on all worker nodes"
       LOG_FILE="terraform_provision_workers.log"
-      bash /root/project/devops/ansible/playbooks/kubernetes/setup_kubernetes_worker.sh $MASTER_IP $PRIVATE_KEY_PATH $WORKER_IP > $LOG_FILE 2>&1
+      bash /home/ec2-user/devops_setup/ansible/playbooks/kubernetes/setup_kubernetes_worker.sh $MASTER_IP $PRIVATE_KEY_PATH $WORKER_IP > $LOG_FILE 2>&1
     EOT
   }
 }
@@ -185,10 +234,6 @@ resource "aws_eip" "master_eip" {
 # Outputs
 output "master_public_ip" {
   value = aws_eip.master_eip.public_ip
-}
-
-output "worker_public_ips" {
-  value = aws_instance.worker[*].public_ip
 }
 
 output "lb_target_group_arn" {

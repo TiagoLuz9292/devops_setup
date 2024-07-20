@@ -4,6 +4,14 @@
   become: yes
 
   tasks:
+    - name: Get private IP using Ansible fact
+      set_fact:
+        master_private_ip: "{{ ansible_default_ipv4.address }}"
+
+    - name: Print private IP
+      debug:
+        msg: "The private IP of the target server is: {{ master_private_ip }}"  
+
     - name: Get public IP using curl
       command: curl -s ifconfig.me
       register: public_ip
@@ -14,7 +22,7 @@
 
     - name: Print public IP
       debug:
-        msg: "The public IP of the target server is: {{ master_public_ip }}"    
+        msg: "The public IP of the target server is: {{ master_public_ip }}"  
 
     - name: Update all packages
       dnf:
@@ -210,8 +218,14 @@
       shell: |
         kubeadm token create --print-join-command > /tmp/join_command.sh
 
-    - name: Pull the join command to the admin server using public IP
+    - name: Pull the join command to the admin server using private IP
       delegate_to: localhost
       shell: |
-        scp -i /home/ec2-user/.ssh/my-key-pair ec2-user@{{ master_public_ip }}:/tmp/join_command.sh /home/ec2-user/infrastructure/devops_setup/terraform/join_command.sh
+        scp -o StrictHostKeyChecking=no -i /home/ec2-user/.ssh/my-key-pair ec2-user@{{ master_private_ip }}:/tmp/join_command.sh /home/ec2-user/devops_setup/terraform/join_command.sh
       register: fetch_result
+      ignore_errors: yes
+
+    - name: Print fetch result
+      delegate_to: localhost
+      debug:
+        var: fetch_result  

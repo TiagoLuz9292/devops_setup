@@ -1,6 +1,10 @@
 sudo yum install -y yum-utils
 sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
 sudo yum -y install terraform
+sudo yum install -y nc
+
+sudo yum update -y
+sudo yum install ansible -y
 
 #copy ed25519 amd ed25519.pub key into new server 
 
