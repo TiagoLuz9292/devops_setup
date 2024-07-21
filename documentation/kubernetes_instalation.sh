@@ -260,3 +260,10 @@ EOF
 config prometheus for metrics
 
 kubectl edit configmap prometheus-prometheus-oper-prometheus -n monitoring
+
+
+----------------------------------------------
+
+EC2 init output logs (user data script logs):
+
+sudo cat /var/log/cloud-init-output.log

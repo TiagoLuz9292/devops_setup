@@ -11,4 +11,4 @@ if [ -z "$MASTER_PRIVATE_IP" ]; then
 fi
 
 # Run the Ansible playbook with the extracted private IP
-ansible-playbook -i $INVENTORY_DIR $K8S_PLAYBOOK_DIR/setup_kubectl_auth.yaml --extra-vars "master_private_ip=$MASTER_PRIVATE_IP" -vvv
+ansible-playbook -i $INVENTORY_DIR $K8S_PLAYBOOK_DIR/setup_kubectl_auth.yaml --extra-vars "master_private_ip=$MASTER_PRIVATE_IP" -v

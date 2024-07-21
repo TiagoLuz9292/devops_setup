@@ -1,1 +1,1 @@
-kubeadm join 51.21.53.50:6443 --token etik57.rc32vbu8ltowz5q5 --discovery-token-ca-cert-hash sha256:546a40835f91622263b6b632ae0bc320f3b551edbdfdbd56a78280ffc23f2745 
+kubeadm join 13.48.205.68:6443 --token bxiov6.9itqhwxj0ruxkghi --discovery-token-ca-cert-hash sha256:2808392b23b2e5bffb3d0a86635294b967e2510a15ace1938d7d912511982575 

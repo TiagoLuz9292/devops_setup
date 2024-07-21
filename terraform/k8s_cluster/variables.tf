@@ -40,12 +40,3 @@ variable "min_size" {
   default     = 2
 }
 
-variable "worker_key_name" {
-  description = "The name of the key pair to use for EC2 instances"
-  type        = string
-}
-
-variable "admin_server_private_ip" {
-  description = "The private IP address of the admin server"
-  type        = string
-}

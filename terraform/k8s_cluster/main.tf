@@ -1,4 +1,3 @@
-# Load networking module outputs
 data "terraform_remote_state" "networking" {
   backend = "local"
   config = {
@@ -14,6 +13,77 @@ data "terraform_remote_state" "admin" {
 }
 
 
+resource "aws_iam_policy" "worker_policy" {
+  name        = "worker_policy"
+  description = "Policy for worker nodes to access SSM and EC2 describe instances"
+  policy      = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = [
+          "ssm:GetParameter",
+          "ssm:PutParameter",
+          "ec2:DescribeInstances"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+resource "aws_iam_role" "master_role" {
+  name               = "master-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action    = "sts:AssumeRole"
+        Effect    = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role" "worker_role" {
+  name               = "worker-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action    = "sts:AssumeRole"
+        Effect    = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "master_policy_attachment" {
+  role       = aws_iam_role.master_role.name
+  policy_arn = aws_iam_policy.worker_policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "worker_policy_attachment" {
+  role       = aws_iam_role.worker_role.name
+  policy_arn = aws_iam_policy.worker_policy.arn
+}
+
+resource "aws_iam_instance_profile" "master_instance_profile" {
+  name = "master-instance-profile"
+  role = aws_iam_role.master_role.name
+}
+
+resource "aws_iam_instance_profile" "worker_instance_profile" {
+  name = "worker-instance-profile"
+  role = aws_iam_role.worker_role.name
+}
+
+
 # Create the Kubernetes master instance
 resource "aws_instance" "master" {
   ami           = "ami-052387465d846f3fc"  # Change to an appropriate AMI ID for your region
@@ -22,6 +92,7 @@ resource "aws_instance" "master" {
   vpc_security_group_ids = [data.terraform_remote_state.networking.outputs.instance_security_group_id]
   key_name      = var.key_name
   associate_public_ip_address = true
+  iam_instance_profile        = aws_iam_instance_profile.master_instance_profile.name
 
   tags = {
     Name  = "K8s-Master"
@@ -29,12 +100,17 @@ resource "aws_instance" "master" {
   }
 }
 
+
 # Create the worker instances in two subnets for high availability
+# Povision worker instances
 resource "aws_launch_template" "worker" {
   name_prefix   = "k8s-worker-"
   image_id      = "ami-052387465d846f3fc"  # Change to an appropriate AMI ID for your region
   instance_type = "t3.medium"
-  key_name      = var.worker_key_name
+  key_name      = var.key_name
+  iam_instance_profile {
+    name = aws_iam_instance_profile.worker_instance_profile.name
+  }
 
   network_interfaces {
     associate_public_ip_address = true
@@ -51,35 +127,91 @@ resource "aws_launch_template" "worker" {
 
   user_data = base64encode(<<-EOF
     #!/bin/bash
+
     # Install necessary packages
     yum update -y
-    yum install -y aws-cli jq
+    yum install -y jq dnf-utils
 
-    # Retrieve the private key from SSM Parameter Store
-    PRIVATE_KEY=$(aws ssm get-parameter --name "WorkerPrivateKey" --with-decryption --query "Parameter.Value" --output text)
+    # Ensure the log directory exists
+    mkdir -p /home/ec2-user/devops_setup/terraform/k8s_cluster
 
-    # Create .ssh directory and set permissions
-    mkdir -p /home/ec2-user/.ssh
-    chmod 700 /home/ec2-user/.ssh
+    LOG_FILE="/home/ec2-user/devops_setup/terraform/k8s_cluster/terraform_provision_workers.log"
 
-    # Save the private key to a file and set permissions
-    echo "$PRIVATE_KEY" > /home/ec2-user/.ssh/key-pair
-    chmod 600 /home/ec2-user/.ssh/key-pair
-    chown ec2-user:ec2-user /home/ec2-user/.ssh/key-pair
+    echo "Starting worker setup script" > $LOG_FILE 2>&1
 
-    # Add the admin server to known hosts to avoid SSH prompt
-    ssh-keyscan -H ${data.terraform_remote_state.admin.outputs.admin_server_private_ip} >> /home/ec2-user/.ssh/known_hosts
+    # Update all packages
+    sudo dnf update -y >> $LOG_FILE 2>&1
 
-    # Test SSH connection
-    ssh -i /home/ec2-user/.ssh/key-pair ec2-user@${data.terraform_remote_state.admin.outputs.admin_server_private_ip} "echo 'SSH connection successful'"
+    # Disable swap
+    sudo swapoff -a >> $LOG_FILE 2>&1
 
-    # Execute the playbook to configure the new EC2 instance
-    ssh -i /home/ec2-user/.ssh/key-pair ec2-user@${data.terraform_remote_state.admin.outputs.admin_server_private_ip} "/home/ec2-user/devops_setup/ansible/playbooks/kubernetes/setup_kubernetes_worker.sh"
+    # Load kernel modules
+    echo -e "overlay\nbr_netfilter" | sudo tee /etc/modules-load.d/k8s.conf >> $LOG_FILE 2>&1
+    sudo modprobe overlay >> $LOG_FILE 2>&1
+    sudo modprobe br_netfilter >> $LOG_FILE 2>&1
+
+    # Set system configurations for Kubernetes
+    echo -e "net.bridge.bridge-nf-call-iptables  = 1\nnet.bridge.bridge-nf-call-ip6tables = 1\nnet.ipv4.ip_forward                 = 1" | sudo tee /etc/sysctl.d/k8s.conf >> $LOG_FILE 2>&1
+    sudo sysctl --system >> $LOG_FILE 2>&1
+
+    # Install containerd
+    wget https://github.com/containerd/containerd/releases/download/v1.6.2/containerd-1.6.2-linux-amd64.tar.gz -O /tmp/containerd-1.6.2-linux-amd64.tar.gz >> $LOG_FILE 2>&1
+    sudo tar -xvf /tmp/containerd-1.6.2-linux-amd64.tar.gz -C /usr/local >> $LOG_FILE 2>&1
+    sudo wget https://raw.githubusercontent.com/containerd/containerd/main/containerd.service -O /etc/systemd/system/containerd.service >> $LOG_FILE 2>&1
+    sudo systemctl enable --now containerd >> $LOG_FILE 2>&1
+
+    # Install runc
+    sudo wget https://github.com/opencontainers/runc/releases/download/v1.1.9/runc.amd64 -O /usr/local/sbin/runc >> $LOG_FILE 2>&1
+    sudo chmod 755 /usr/local/sbin/runc >> $LOG_FILE 2>&1
+
+    # Install CNI plugins
+    sudo mkdir -p /opt/cni/bin >> $LOG_FILE 2>&1
+    wget https://github.com/containernetworking/plugins/releases/download/v1.1.1/cni-plugins-linux-amd64-v1.1.1.tgz -O /tmp/cni-plugins-linux-amd64-v1.1.1.tgz >> $LOG_FILE 2>&1
+    sudo tar -xvf /tmp/cni-plugins-linux-amd64-v1.1.1.tgz -C /opt/cni/bin >> $LOG_FILE 2>&1
+
+    # Configure containerd
+    sudo mkdir -p /etc/containerd >> $LOG_FILE 2>&1
+    sudo containerd config default | sudo tee /etc/containerd/config.toml >> $LOG_FILE 2>&1
+    sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml >> $LOG_FILE 2>&1
+    sudo sed -i 's|k8s.gcr.io/pause:3.6|registry.k8s.io/pause:3.2|' /etc/containerd/config.toml >> $LOG_FILE 2>&1
+    sudo systemctl restart containerd >> $LOG_FILE 2>&1
+
+    # Set SELinux to permissive mode
+    sudo setenforce 0 >> $LOG_FILE 2>&1
+    sudo sed -i 's/^SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config >> $LOG_FILE 2>&1
+
+    # Add Kubernetes yum repository without exclude
+    echo -e "[kubernetes]\nname=Kubernetes\nbaseurl=https://pkgs.k8s.io/core:/stable:/v1.30/rpm/\nenabled=1\ngpgcheck=1\ngpgkey=https://pkgs.k8s.io/core:/stable:/v1.30/rpm/repodata/repomd.xml.key" | sudo tee /etc/yum.repos.d/kubernetes.repo >> $LOG_FILE 2>&1
+
+    # Install Kubernetes packages
+    sudo dnf install -y kubelet kubeadm kubectl >> $LOG_FILE 2>&1
+
+    # Add exclude parameter to Kubernetes yum repository
+    echo 'exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni' | sudo tee -a /etc/yum.repos.d/kubernetes.repo >> $LOG_FILE 2>&1
+
+    # Enable and start kubelet
+    sudo systemctl enable --now kubelet >> $LOG_FILE 2>&1
+
+    # Install iproute package
+    sudo dnf install -y iproute >> $LOG_FILE 2>&1
+
+    # Install iproute-tc package
+    sudo dnf install -y iproute-tc >> $LOG_FILE 2>&1
+
+    # Retrieve the join command from SSM Parameter Store
+    JOIN_COMMAND=$(aws ssm get-parameter --name "k8s-join-command" --with-decryption --query "Parameter.Value" --output text --region eu-north-1)
+
+    export JOIN_COMMAND
+
+    eval sudo $JOIN_COMMAND
+
   EOF
   )
 }
 
 resource "aws_autoscaling_group" "k8s_asg" {
+  depends_on = [null_resource.provision_master]
+  
   desired_capacity     = 2
   max_size             = 4
   min_size             = 2
@@ -119,7 +251,7 @@ resource "aws_autoscaling_group" "k8s_asg" {
 
 # Local-exec to update the inventory file
 resource "null_resource" "update_inventory" {
-  depends_on = [aws_autoscaling_group.k8s_asg]
+  depends_on = [aws_instance.master]
 
   provisioner "local-exec" {
     command = <<-EOT
@@ -135,7 +267,7 @@ resource "null_resource" "update_inventory" {
 
 # Provision master instance
 resource "null_resource" "provision_master" {
-  depends_on = [aws_instance.master, null_resource.update_inventory]
+  depends_on = [aws_instance.master]
 
   provisioner "local-exec" {
     command = <<EOT
@@ -144,6 +276,8 @@ resource "null_resource" "provision_master" {
 
       MASTER_IP=${aws_instance.master.private_ip}
       PRIVATE_KEY_PATH=${var.private_key_path}
+      AWS_REGION="eu-north-1"
+      PARAMETER_NAME="k8s-join-command"
 
       # Ensure correct permissions for the private key
       chmod 600 $PRIVATE_KEY_PATH
@@ -180,51 +314,18 @@ resource "null_resource" "provision_master" {
         echo "Failed to run setup_kubectl_auth.sh. Check kubeconfig_setup.log for details."
         exit 1
       fi
+
+      # Retrieve the join command
+      JOIN_COMMAND=$(ssh -o StrictHostKeyChecking=no -i $PRIVATE_KEY_PATH ec2-user@$MASTER_IP "sudo kubeadm token create --print-join-command")
+
+      # Store the join command in SSM Parameter Store
+      aws ssm put-parameter --name $PARAMETER_NAME --value "$JOIN_COMMAND" --type "String" --overwrite --region $AWS_REGION
     EOT
   }
 }
 
 
-# Povision worker instances
-resource "null_resource" "provision_workers" {
-  depends_on = [aws_autoscaling_group.k8s_asg, null_resource.provision_master]
 
-  provisioner "local-exec" {
-    command = <<EOT
-      #!/bin/bash
-      set -e
-
-      MASTER_IP=${aws_instance.master.private_ip}
-      PRIVATE_KEY_PATH=${var.private_key_path}
-      INVENTORY_PATH="/home/ec2-user/devops_setup/kubernetes/inventory"
-
-      # Check if the master node is ready
-      while ! ssh -o StrictHostKeyChecking=no -i $PRIVATE_KEY_PATH ec2-user@$MASTER_IP sudo kubectl get nodes; do
-        echo "Waiting for Kubernetes master to be ready..."
-        sleep 20
-      done
-
-      # Get the list of worker node IPs
-      WORKER_IPS=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=K8s-Worker" "Name=instance-state-name,Values=running" --query "Reservations[*].Instances[*].PrivateIpAddress" --output text)
-
-      # Wait for all worker instances to be available
-      for WORKER_IP in $WORKER_IPS; do
-        echo "Waiting for instance to be available at IP $WORKER_IP..."
-        while ! nc -z -w5 $WORKER_IP 22; do
-          sleep 10
-        done
-
-        # Add the worker IP to known hosts to avoid SSH prompt
-        ssh-keyscan -H $WORKER_IP >> ~/.ssh/known_hosts
-      done
-
-      # Run the Ansible playbook
-      echo "Starting the Ansible Playbook for Kubernetes setup on all worker nodes"
-      LOG_FILE="terraform_provision_workers.log"
-      bash /home/ec2-user/devops_setup/ansible/playbooks/kubernetes/setup_kubernetes_worker.sh $MASTER_IP $PRIVATE_KEY_PATH $WORKER_IP > $LOG_FILE 2>&1
-    EOT
-  }
-}
 
 # Allocate Elastic IP for Master Node
 resource "aws_eip" "master_eip" {
@@ -238,4 +339,20 @@ output "master_public_ip" {
 
 output "lb_target_group_arn" {
   value = data.terraform_remote_state.networking.outputs.lb_target_group_arn
+}
+
+resource "aws_autoscaling_policy" "scale_out_policy" {
+  name                   = "scale-out"
+  scaling_adjustment     = 1
+  adjustment_type        = "ChangeInCapacity"
+  cooldown               = 300
+  autoscaling_group_name = aws_autoscaling_group.k8s_asg.name
+}
+
+resource "aws_autoscaling_policy" "scale_in_policy" {
+  name                   = "scale-in"
+  scaling_adjustment     = -1
+  adjustment_type        = "ChangeInCapacity"
+  cooldown               = 300
+  autoscaling_group_name = aws_autoscaling_group.k8s_asg.name
 }
