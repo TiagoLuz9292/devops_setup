@@ -145,6 +145,28 @@ resource "aws_security_group" "instance" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Calico ports
+  ingress {
+    from_port   = 179
+    to_port     = 179
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 4789
+    to_port     = 4789
+    protocol    = "udp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 4
+    to_port     = 4
+    protocol    = "4"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   ingress {
     from_port   = 8285
     to_port     = 8285
@@ -186,7 +208,6 @@ resource "aws_security_group" "instance" {
     protocol    = "udp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
 
   ingress {
     from_port   = 4500

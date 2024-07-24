@@ -1,0 +1,18 @@
+[ec2-user@ip-10-0-3-9 solana-spl-momentum-scanner]$ sudo yum install firewalld -y
+
+[ec2-user@ip-10-0-3-9 solana-spl-momentum-scanner]$ sudo systemctl start firewalld
+[ec2-user@ip-10-0-3-9 solana-spl-momentum-scanner]$ sudo systemctl enable firewalld
+[ec2-user@ip-10-0-3-9 solana-spl-momentum-scanner]$ sudo firewall-cmd --list-all
+p
+[ec2-user@ip-10-0-3-9 solana-spl-momentum-scanner]$ sudo firewall-cmd --add-masquerade --permanent
+success
+[ec2-user@ip-10-0-3-9 solana-spl-momentum-scanner]$ sudo firewall-cmd --reload
+success
+[ec2-user@ip-10-0-3-9 solana-spl-momentum-scanner]$ 
+
+systemctl restart network
+
+
+to get calico pods:
+
+kubectl get pods -n kube-system -l k8s-app=calico-node
