@@ -25,7 +25,7 @@ variable "region" {
 variable "desired_capacity" {
   description = "Desired capacity for ASG"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "max_size" {
@@ -37,6 +37,6 @@ variable "max_size" {
 variable "min_size" {
   description = "Minimum size for ASG"
   type        = number
-  default     = 2
+  default     = 1
 }
 

@@ -1,0 +1,70 @@
+Before you begin
+
+Create a snapshot of the volume, in case you need to roll back your changes. For more information, see Create Amazon EBS snapshots.
+
+Confirm that the volume modification succeeded and that it is in theoptimizing or completed state. For more information, see Monitor the progress of EBS volume modifications.
+
+Ensure that the volume is attached to the instance and that it is formatted and mounted. For more information, see Format and mount an attached volume.
+
+(Linux instances only) If you are using logical volumes on the Amazon EBS volume, you must use Logical Volume Manager (LVM) to extend the logical volume. For instructions about how to do this, see the Extend the logical volume section in the How do I create an LVM logical volume on an entire EBS volume? AWS Knowledge Center article.
+
+Linux instances
+Note
+The following instructions walk you through the process of extending XFS and Ext4 file systems for Linux. For information about extending a different file system, see its documentation.
+
+Before you can extend a file system on Linux, you must extend the partition, if your volume has one.
+
+Extend the file system of EBS volumes
+Use the following procedure to extend the file system for a resized volume.
+
+Note that device and partition naming differs for Xen instances and instances built on the Nitro System. To determine whether your instance is Xen-based or Nitro-based, use the describe-instance-types AWS CLI command as follows:
+
+
+[ec2-user ~]$ aws ec2 describe-instance-types --instance-type instance_type --query "InstanceTypes[].Hypervisor"
+nitro indicates that your instance in Nitro-based. xen or xen-on-nitro indicates that your instance is Xen-based.
+
+To extend the file system of EBS volumes
+Connect to your instance.
+
+Resize the partition, if needed. To do so:
+
+Check whether the volume has a partition. Use the lsblk command.
+
+
+Nitro instance example
+
+Xen instance example
+In the following example output, the root volume (nvme0n1) has two partitions (nvme0n1p1 and nvme0n1p128), while the additional volume (nvme1n1) has no partitions.
+
+
+[ec2-user ~]$ sudo lsblk
+NAME          MAJ:MIN RM SIZE RO TYPE MOUNTPOINT
+nvme1n1       259:0    0  30G  0 disk /data
+nvme0n1       259:1    0  16G  0 disk
+└─nvme0n1p1   259:2    0   8G  0 part /
+└─nvme0n1p128 259:3    0   1M  0 part
+If the volume has a partition, continue the procedure from the following step (2b). If the volume has no partitions, skip steps 2b, 2c, and 2d, and continue the procedure from step 3.
+
+Troubleshooting tip
+If you do not see the volume in the command output, ensure that the volume is attached to the instance, and that it is formatted and mounted.
+
+Check whether the partition needs to be extended. In the lsblk command output from the previous step, compare the partition size and the volume size.
+
+If the partition size is smaller than the volume size, continue to the next step. If the partition size is equal to the volume size, the partition can't be extended.
+
+Troubleshooting tip
+If the volume still reflects the original size, confirm that the volume modification succeeded.
+
+Extend the partition. Use the growpart command and specify the partition to extend.
+
+
+Nitro instance example
+
+Xen instance example
+For example, to extend a partition named nvme0n1p1, use the following command.
+
+Important
+Note the space between the device name (nvme0n1) and the partition number (1).
+
+
+[ec2-user ~]$ sudo growpart /dev/nvme0n1 1

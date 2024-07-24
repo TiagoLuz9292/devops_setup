@@ -212,9 +212,9 @@ resource "aws_launch_template" "worker" {
 resource "aws_autoscaling_group" "k8s_asg" {
   depends_on = [null_resource.provision_master]
   
-  desired_capacity     = 2
+  desired_capacity     = 1
   max_size             = 4
-  min_size             = 2
+  min_size             = 1
   vpc_zone_identifier  = [
     data.terraform_remote_state.networking.outputs.public_subnet_id1, 
     data.terraform_remote_state.networking.outputs.public_subnet_id2
@@ -291,7 +291,7 @@ resource "null_resource" "provision_master" {
       done
 
       # Add the master IP to known hosts to avoid SSH prompt
-      ssh-keygen -R $MASTER_IP || true
+      ssh-keygen -R $MASTER_IP -f ~/.ssh/known_hosts || true
       ssh-keyscan -H $MASTER_IP >> ~/.ssh/known_hosts
 
       # Test SSH connection

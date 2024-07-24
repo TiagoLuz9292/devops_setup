@@ -192,6 +192,7 @@
  
 
     - name: Initialize Kubernetes cluster
+      command: kubeadm init --apiserver-advertise-address="{{ master_private_ip }}" --apiserver-cert-extra-sans="{{ master_private_ip }}" --pod-network-cidr="$POD_CIDR" --node-name "master" --ignore-preflight-errors Swap
       command: kubeadm init --control-plane-endpoint="{{ master_public_ip }}" --apiserver-cert-extra-sans="{{ master_public_ip }}" --pod-network-cidr="10.244.0.0/16" --node-name "master" --ignore-preflight-errors=Swap,ImagePull --kubernetes-version v1.30.2
       ignore_errors: yes
 

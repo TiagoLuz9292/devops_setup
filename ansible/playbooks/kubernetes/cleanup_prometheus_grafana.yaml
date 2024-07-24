@@ -1,22 +1,24 @@
 ---
 - name: Cleanup Prometheus, Grafana, and Helm
   hosts: all
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
   become: true
   tasks:
     - name: Uninstall Prometheus
-      shell: helm uninstall prometheus -n monitoring
+      shell: helm uninstall prometheus -n logging
       ignore_errors: yes
 
     - name: Uninstall Grafana
-      shell: helm uninstall grafana -n monitoring
+      shell: helm uninstall grafana -n logging
       ignore_errors: yes
 
-    - name: Delete monitoring namespace
-      shell: kubectl delete namespace monitoring
+    - name: Delete logging namespace
+      shell: kubectl delete namespace logging
       ignore_errors: yes
 
-    - name: Delete all PVCs in monitoring namespace
-      shell: kubectl delete pvc -n monitoring --all
+    - name: Delete all PVCs in logging namespace
+      shell: kubectl delete pvc -n logging --all
       ignore_errors: yes
 
     - name: Remove Helm (Ubuntu)
@@ -53,10 +55,10 @@
 
     - name: Delete Prometheus CRDs
       shell: >
-        kubectl delete crd prometheuses.monitoring.coreos.com &&
-        kubectl delete crd alertmanagers.monitoring.coreos.com &&
-        kubectl delete crd prometheusrules.monitoring.coreos.com &&
-        kubectl delete crd servicemonitors.monitoring.coreos.com &&
-        kubectl delete crd podmonitors.monitoring.coreos.com &&
-        kubectl delete crd thanosrulers.monitoring.coreos.com
+        kubectl delete crd prometheuses.logging.coreos.com &&
+        kubectl delete crd alertmanagers.logging.coreos.com &&
+        kubectl delete crd prometheusrules.logging.coreos.com &&
+        kubectl delete crd servicemonitors.logging.coreos.com &&
+        kubectl delete crd podmonitors.logging.coreos.com &&
+        kubectl delete crd thanosrulers.logging.coreos.com
       ignore_errors: yes

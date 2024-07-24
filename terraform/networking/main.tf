@@ -125,6 +125,13 @@ resource "aws_security_group" "instance" {
   }
 
   ingress {
+    from_port   = 3100
+    to_port     = 3100
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
     from_port   = 2379
     to_port     = 2380
     protocol    = "tcp"
@@ -163,6 +170,28 @@ resource "aws_security_group" "instance" {
     from_port   = 30000
     to_port     = 32767
     protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 500
+    to_port     = 500
+    protocol    = "udp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 1194
+    to_port     = 1194
+    protocol    = "udp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+
+  ingress {
+    from_port   = 4500
+    to_port     = 4500
+    protocol    = "udp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 

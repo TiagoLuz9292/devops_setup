@@ -1,1 +1,1 @@
-kubeadm join 13.48.205.68:6443 --token bxiov6.9itqhwxj0ruxkghi --discovery-token-ca-cert-hash sha256:2808392b23b2e5bffb3d0a86635294b967e2510a15ace1938d7d912511982575 
+kubeadm join 13.60.165.133:6443 --token umkaox.0oudbiqw5jhe8zlv --discovery-token-ca-cert-hash sha256:25ae855a9289a0f4cd7e0db71be71bb1a8dd16cdc58b758b572e058068f61b05 
