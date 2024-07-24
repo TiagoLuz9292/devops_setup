@@ -1,0 +1,95 @@
+---
+- name: Install Helm, Prometheus, and Grafana
+  hosts: master
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+  become: yes
+
+  tasks:
+    - name: Add Helm repositories
+      shell: |
+        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+        helm repo update
+      args:
+        executable: /bin/bash
+
+    - name: Install Prometheus
+      shell: |
+        helm install prometheus prometheus-community/kube-prometheus-stack --namespace=grafana-loki
+      args:
+        executable: /bin/bash
+
+- name: Setup Persistent Volumes and Volume Claims for Prometheus
+  hosts: admin
+  tasks:
+    - name: Create Persistent Volumes
+      copy:
+        dest: /home/ec2-user/devops_setup/kubernetes/prometheus/pvs.yaml
+        content: |
+          apiVersion: v1
+          kind: PersistentVolume
+          metadata:
+            name: prometheus-pv
+          spec:
+            capacity:
+              storage: 10Gi
+            accessModes:
+              - ReadWriteOnce
+            persistentVolumeReclaimPolicy: Retain
+            storageClassName: manual
+            hostPath:
+              path: /mnt/data/prometheus
+          ---
+          apiVersion: v1
+          kind: PersistentVolume
+          metadata:
+            name: alertmanager-pv
+          spec:
+            capacity:
+              storage: 10Gi
+            accessModes:
+              - ReadWriteOnce
+            persistentVolumeReclaimPolicy: Retain
+            storageClassName: manual
+            hostPath:
+              path: /mnt/data/alertmanager
+
+    - name: Apply Persistent Volumes
+      shell: kubectl apply -f /home/ec2-user/devops_setup/kubernetes/prometheus/pvs.yaml --validate=false
+      args:
+        executable: /bin/bash
+
+    - name: Create Persistent Volume Claims
+      copy:
+        dest: /home/ec2-user/devops_setup/kubernetes/prometheus/pvcs.yaml
+        content: |
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: prometheus-server
+            namespace: grafana-loki
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 10Gi
+            storageClassName: manual
+          ---
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: storage-prometheus-alertmanager-0
+            namespace: grafana-loki
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 10Gi
+            storageClassName: manual
+
+    - name: Apply Persistent Volume Claims
+      shell: kubectl apply -f /home/ec2-user/devops_setup/kubernetes/prometheus/pvcs.yaml -n gragana-loki --validate=false
+      args:
+        executable: /bin/bash
