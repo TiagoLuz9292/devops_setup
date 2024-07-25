@@ -117,12 +117,12 @@
       delegate_to: localhost
       become: true
       ansible.builtin.command:
-        cmd: scp -i /home/ec2-user/.ssh/my-key-pair ec2-user@{{ hostvars['master']['global_master_private_ip'] }}:/tmp/kubeconfig-jenkins.yaml /home/ec2-user/devops_setup/jenkins-docker/kubeconfig-jenkins.yaml
+        cmd: scp -i /home/ec2-user/.ssh/my-key-pair ec2-user@{{ hostvars['master']['global_master_private_ip'] }}:/tmp/kubeconfig-jenkins.yaml /home/ec2-user/.ssh/kubeconfig-jenkins.yaml
 
     - name: Export KUBECONFIG environment variable
       shell: |
-        if ! grep -Fxq "export KUBECONFIG=/home/ec2-user/devops_setup/jenkins-docker/kubeconfig-jenkins.yaml" ~/.bashrc; then
-          echo "export KUBECONFIG=/home/ec2-user/devops_setup/jenkins-docker/kubeconfig-jenkins.yaml" >> ~/.bashrc
+        if ! grep -Fxq "export KUBECONFIG=/home/ec2-user/.ssh/kubeconfig-jenkins.yaml" ~/.bashrc; then
+          echo "export KUBECONFIG=/home/ec2-user/.ssh/kubeconfig-jenkins.yaml" >> ~/.bashrc
         fi
       args:
         executable: /bin/bash

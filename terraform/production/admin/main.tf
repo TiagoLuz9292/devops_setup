@@ -18,7 +18,7 @@ resource "aws_instance" "admin" {
   key_name      = var.key_name
   associate_public_ip_address = true
 
-  user_data = file("/home/ec2-user/devops_setup/prepare_env.sh")
+  user_data = file("/home/ec2-user/devops_setup/admin_server/prepare_env.sh")
 
   tags = {
     Name  = "Admin-Server"
