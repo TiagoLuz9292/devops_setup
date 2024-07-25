@@ -16,3 +16,5 @@ systemctl restart network
 to get calico pods:
 
 kubectl get pods -n kube-system -l k8s-app=calico-node
+
+also, opened specific ports for calico to work, that was the problem

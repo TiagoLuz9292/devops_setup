@@ -1,1 +1,0 @@
-ansible-playbook -i $INVENTORY_DIR $K8S_PLAYBOOK_DIR/setup_kubernetes_worker.yaml -v

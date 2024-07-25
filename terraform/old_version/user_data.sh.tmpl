@@ -1,4 +1,0 @@
-#!/bin/bash
-%{ for user, key in user_public_keys }
-echo '${key}' >> /home/ec2-user/.ssh/authorized_keys
-%{ endfor }

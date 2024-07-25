@@ -1,29 +1,14 @@
-Step 1: Add Grafana repo
-Add Grafana repo to your system to download the helm chart to set up Grafana Loki Logging. Run the following command to add the repo
 
 helm repo add grafana https://grafana.github.io/helm-charts
-Once the repo is added, run the following command to update the repo to make sure the repo is up-to-date
-
 helm repo update
-Now, list every repo with the word Loki using the command
 
 helm search repo loki
-You will get the list of repos with the word Loki as shown below
-
-list repos with word loki
-From these repos, we are going to use grafana/loki-stack which has the Helm chart to deploy Promtail, and Grafana, and configure Loki to Grafana.
-
-Step 2: Customize Helm Chart Configuration Values
-Before deploying we need to update some configurations in the helm chart.
-
-Use the below command to save the default values of the helm chart in a YAML file.
-
 
 helm show values grafana/loki-stack > loki.yaml    !!!! WE ALREADY HAVE THIS FILE READY IN  /home/ec2-user/devops_setup/kubernetes/loki/loki.yaml
 
 # CRITICAL: Loki data source url has to be:------    http://loki.grafana-loki.svc.cluster.local:3100 ------  
 
-helm upgrade --install --values loki.yaml loki grafana/loki-stack -n grafana-loki --create-namespace
+helm upgrade --install --values /home/ec2-user/devops_setup/kubernetes/loki/loki.yaml loki grafana/loki-stack -n grafana-loki --create-namespace
 This creates a namespace grafana-loki and deploys every component for the Grafana Loki Logging on Kubernetes.
 
 Once everything has deployed, you will get the following output
@@ -49,3 +34,5 @@ Grafana UI for Loki
 Login to Grafana using the username and password. Your default username will be admin and to get the password run the following command
 
 kubectl get secret --namespace grafana-loki loki-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+
+

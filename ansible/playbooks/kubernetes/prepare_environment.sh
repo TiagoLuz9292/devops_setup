@@ -1,1 +1,0 @@
-ansible-playbook -i $INVENTORY_DIR $K8S_PLAYBOOK_DIR/prepare_environment.yml
