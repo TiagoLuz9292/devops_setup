@@ -6,7 +6,7 @@ data "aws_caller_identity" "current" {}
 resource "aws_vpc" "main" {
   cidr_block = var.vpc_cidr
   tags = {
-    Name = "main-vpc"
+    Name = "test-vpc"
   }
 }
 
@@ -18,7 +18,7 @@ resource "aws_subnet" "public1" {
   availability_zone       = var.availability_zone1
   map_public_ip_on_launch = true
   tags = {
-    Name = "public-subnet-1"
+    Name = "test-subnet-1"
   }
 }
 
@@ -30,7 +30,7 @@ resource "aws_subnet" "public2" {
   availability_zone       = var.availability_zone2
   map_public_ip_on_launch = true
   tags = {
-    Name = "public-subnet-2"
+    Name = "test-subnet-2"
   }
 }
 
@@ -41,7 +41,7 @@ resource "aws_subnet" "admin" {
   cidr_block              = var.admin_subnet_cidr
   map_public_ip_on_launch = true
   tags = {
-    Name = "admin-subnet"
+    Name = "test-admin-subnet"
   }
 }
 
@@ -50,7 +50,7 @@ resource "aws_subnet" "admin" {
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
   tags = {
-    Name = "main-igw"
+    Name = "test-igw"
   }
 }
 
@@ -63,7 +63,7 @@ resource "aws_route_table" "routetable" {
     gateway_id = aws_internet_gateway.igw.id
   }
   tags = {
-    Name = "main-route-table"
+    Name = "test-route-table"
   }
 }
 
@@ -110,7 +110,7 @@ resource "aws_security_group" "elb" {
   }
 
   tags = {
-    Name = "elb-security-group"
+    Name = "test-elb-security-group"
   }
 }
 
@@ -249,7 +249,7 @@ resource "aws_security_group" "instance" {
   }
 
   tags = {
-    Name = "instance-security-group"
+    Name = "test-instance-security-group"
   }
 }
 
@@ -271,6 +271,6 @@ resource "aws_lb_target_group" "k8s_target_group" {
     healthy_threshold   = 2
   }
   tags = {
-    Name = "k8s-target-group"
+    Name = "test-k8s-target-group"
   }
 }

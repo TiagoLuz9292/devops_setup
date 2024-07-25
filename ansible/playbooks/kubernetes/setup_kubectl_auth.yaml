@@ -121,8 +121,8 @@
 
     - name: Export KUBECONFIG environment variable
       shell: |
-        export KUBECONFIG=/home/ec2-user/devops_setup/jenkins-docker/kubeconfig-jenkins.yaml
-        echo "export KUBECONFIG=/home/ec2-user/devops_setup/jenkins-docker/kubeconfig-jenkins.yaml" >> ~/.bashrc
-        source ~/.bashrc
+        if ! grep -Fxq "export KUBECONFIG=/home/ec2-user/devops_setup/jenkins-docker/kubeconfig-jenkins.yaml" ~/.bashrc; then
+          echo "export KUBECONFIG=/home/ec2-user/devops_setup/jenkins-docker/kubeconfig-jenkins.yaml" >> ~/.bashrc
+        fi
       args:
         executable: /bin/bash

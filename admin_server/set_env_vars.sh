@@ -8,7 +8,8 @@ mkdir -p "$USER_HOME"
 
 # Define the environment variable and its value
 DEVOPS_DIR="$USER_HOME/devops_setup"
-INVENTORY_DIR="$DEVOPS_DIR/kubernetes/inventory"
+INVENTORY_DIR="$DEVOPS_DIR/ansible/inventory/inventory"
+TERRAFORM_DIR="$DEVOPS_DIR/terraform"
 K8S_PLAYBOOK_DIR="$DEVOPS_DIR/ansible/playbooks/kubernetes"
 
 
@@ -45,10 +46,27 @@ if ! grep -q "alias tf=" "$USER_HOME/.bashrc"; then
     echo "alias tf='cd \$DEVOPS_DIR/terraform'" >> "$USER_HOME/.bashrc"
 fi
 
+if ! grep -q "alias pods=" "$USER_HOME/.bashrc"; then
+    echo "alias pods='kubectl get pods -n'" >> "$USER_HOME/.bashrc"
+fi
+
+if ! grep -q "alias svc=" "$USER_HOME/.bashrc"; then
+    echo "alias svc='kubectl get svc -n'" >> "$USER_HOME/.bashrc"
+fi
+
+if ! grep -q "alias nodes=" "$USER_HOME/.bashrc"; then
+    echo "alias nodes='kubectl get nodes'" >> "$USER_HOME/.bashrc"
+fi
+
+if ! grep -q "alias gen-inv=" "$USER_HOME/.bashrc"; then
+    echo "alias gen-inv='/home/ec2-user/devops_setup/ansible/inventory/generate_inventory.sh'" >> "$USER_HOME/.bashrc"
+fi
+
+if ! grep -q "alias get-inv=" "$USER_HOME/.bashrc"; then
+    echo "alias get-inv='cat /home/ec2-user/devops_setup/ansible/inventory/inventory'" >> "$USER_HOME/.bashrc"
+fi
+
+
 # Source the .bashrc to apply changes to the current session
 source "$USER_HOME/.bashrc"
 
-echo "Base Devops dir set to $DEVOPS_DIR and added to .bashrc"
-echo "Inventory directory set to $INVENTORY_DIR and added to .bashrc"
-echo "Kubernetes playbook directory set to $K8S_PLAYBOOK_DIR and added to .bashrc"
-echo "Command aliases added to .bashrc"

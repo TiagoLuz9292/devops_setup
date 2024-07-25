@@ -25,7 +25,7 @@ resource "aws_instance" "admin" {
   user_data = file("/home/ec2-user/devops_setup/prepare_env.sh")
 
   tags = {
-    Name  = "Admin-Server"
+    Name  = "test-Admin-Server"
     Group = "Admin"
   }
 }

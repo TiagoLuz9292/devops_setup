@@ -1,9 +1,9 @@
 [all]
-master ansible_host=10.0.1.234 ansible_user=ec2-user
+master ansible_host= ansible_user=ec2-user
 admin ansible_host=10.0.3.9 ansible_user=ec2-user
 
 [master]
-master ansible_host=10.0.1.234 ansible_user=ec2-user
+master ansible_host= ansible_user=ec2-user
 
 [admin]
 admin ansible_host=10.0.3.9 ansible_user=ec2-user

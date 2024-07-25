@@ -103,7 +103,7 @@ resource "aws_instance" "master" {
   iam_instance_profile        = aws_iam_instance_profile.master_instance_profile.name
 
   tags = {
-    Name  = "K8s-Master"
+    Name  = "test-K8s-Master"
     Group = "Kubernetes"
   }
 }
@@ -126,7 +126,7 @@ resource "aws_launch_template" "worker" {
   tag_specifications {
     resource_type = "instance"
     tags = {
-      Name  = "K8s-Worker"
+      Name  = "test-K8s-Worker"
       Group = "Kubernetes"
     }
   }
@@ -231,7 +231,7 @@ resource "aws_autoscaling_group" "k8s_asg" {
 
   tag {
     key                 = "Name"
-    value               = "K8s-Worker"
+    value               = "test-K8s-Worker"
     propagate_at_launch = true
   }
 

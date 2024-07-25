@@ -29,12 +29,13 @@ echo 'ssh-add /home/ec2-user/.ssh/my-key-pair' >> ~/.bashrc
 source ~/.bashrc
 
 sudo yum install git
+
+cd /home/ec2-user
 git clone git@github.com:TiagoLuz9292/devops_setup.git
 
-cd devops_setup/
+cd /home/ec2-user/devops_setup/admin_server
 
 chmod +x set_env_vars.sh
 chmod +x prepare_env.sh 
-chmod +x install_kubectl.sh 
 
 ./set_env_vars.sh
