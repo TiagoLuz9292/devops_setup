@@ -133,9 +133,9 @@ resource "aws_launch_template" "worker" {
     yum install -y jq dnf-utils
 
     # Ensure the log directory exists
-    mkdir -p /home/ec2-user/devops_setup/terraform/k8s_cluster
+    mkdir -p /home/ec2-user/devops_setup/terraform/production/logs
 
-    LOG_FILE="/home/ec2-user/devops_setup/terraform/k8s_cluster/terraform_provision_workers.log"
+    LOG_FILE="/home/ec2-user/devops_setup/terraform/production/logs/terraform_provision_workers.log"
 
     echo "Starting worker setup script" > $LOG_FILE 2>&1
 
@@ -256,7 +256,7 @@ resource "null_resource" "update_inventory" {
   provisioner "local-exec" {
     command = <<-EOT
       WORKER_IPS=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=K8s-Worker" "Name=instance-state-name,Values=running" --query "Reservations[*].Instances[*].PublicIpAddress" --output text)
-      /home/ec2-user/devops_setup/terraform/generate_inventory.sh
+      /home/ec2-user/devops_setup/ansible/inventory/generate_inventory.sh
     EOT
   }
 
