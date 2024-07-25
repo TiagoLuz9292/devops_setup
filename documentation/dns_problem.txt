@@ -1,0 +1,57 @@
+ISSUE: Pods aren't able to resolve each others pod's names
+
+FIX:
+
+Open specific ports for calico to work:
+
+  # Calico ports
+  ingress {
+    from_port   = 179
+    to_port     = 179
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow BGP protocol for Calico"
+  }
+
+  ingress {
+    from_port   = 4789
+    to_port     = 4789
+    protocol    = "udp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow VXLAN for Calico"
+  }
+
+  ingress {
+    from_port   = 4
+    to_port     = 4
+    protocol    = "4"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow IP-in-IP for Calico"
+  }
+
+  ingress {
+    from_port   = 8285
+    to_port     = 8285
+    protocol    = "udp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow IP-in-IP encapsulated packets for Calico"
+  }
+
+-----------------------------------
+
+ADITIONAL POSSIBLE SOLUTION:
+
+
+sudo yum install firewalld -y
+sudo systemctl start firewalldsudo systemctl enable firewalldsudo firewall-cmd --list-all
+sudo firewall-cmd --add-masquerade --permanent
+sudo firewall-cmd --reload
+
+
+systemctl restart network
+
+
+to get calico pods:
+
+kubectl get pods -n kube-system -l k8s-app=calico-node
+

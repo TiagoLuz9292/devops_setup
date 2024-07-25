@@ -1,136 +1,167 @@
-# devops_setup
+# Comprehensive AWS Cloud Infrastructure Project
 
-Project and System Configuration Documentation
-Overview
-This document provides an overview of the setup and configuration of a CI/CD pipeline using Jenkins, Ansible, Terraform, and Docker. The system is designed to build and deploy a web application consisting of a frontend and backend service. The application is deployed to AWS EC2 instances using Docker containers.
+## Description
 
-Directory Structure
-The directory structure for the project is as follows:
+This project showcases a robust AWS cloud infrastructure with a Kubernetes cluster (master and worker nodes) within a single VPC. It utilizes Terraform for infrastructure as code and Jenkins for CI/CD pipelines, focusing on scalability, monitoring, and continuous integration/continuous deployment (CI/CD) pipelines.
 
+## Table of Contents
 
-devops/
-  ├── ansible/
-  │   ├── playbooks/
-  │   │   ├── deploy-deploy_script.yaml
-  │   │   ├── deploy-main.yaml
-  │   │   ├── install_docker.yaml
-  │   │   ├── prepare_environment.yaml
-  │   │   └── test.yaml
-  │   ├── roles/common/tasks/
-  │   │   ├── deploy-script.yaml
-  │   │   ├── docker.yaml
-  │   │   └── environment.yaml
-  │   ├── ansible.cfg
-  │   ├── deploy-deploy_script.sh
-  │   ├── install_docker.sh
-  │   ├── inventory.ini
-  │   ├── prepare_environment.sh
-  │   ├── test.txt
-  ├── applications/solana-spl-momentum-scanner/
-  │   ├── config.json
-  │   ├── Jenkinsfile
-  ├── terraform/
-  │   ├── .terraform/
-  │   ├── .terraform.lock.hcl
-  │   ├── main.tf
-  │   ├── outputs.tf
-  │   ├── provider.tf
-  │   ├── terraform.tfstate
-  │   ├── variables.tf
-  ├── .gitattributes
-  ├── aws_ec2_inventory.py
-  ├── bfg.jar
-  ├── deploy.sh
-  └── README.md
+1. [Infrastructure Overview](#infrastructure-overview)
+2. [Architecture Diagram](#architecture-diagram)
+3. [Setup and Installation](#setup-and-installation)
+4. [Usage](#usage)
+5. [CI/CD Pipeline](#cicd-pipeline)
+6. [Monitoring and Logging](#monitoring-and-logging)
+7. [Contribution Guidelines](#contribution-guidelines)
+8. [License](#license)
+9. [Contact Information](#contact-information)
 
+## Infrastructure Overview
 
--Components
+The infrastructure includes:
+- **VPC**: A virtual private cloud with subnets for high availability.
+- **Subnets**: Two public subnets in different availability zones for an Elastic Load Balancer and one subnet for the admin server.
+- **Kubernetes Cluster**: A master node and auto-scaling worker nodes.
+- **Auto Scaling Group (ASG)**: Manages Kubernetes worker nodes, triggered by CloudWatch alarms.
+- **Security Groups**: Configured for secure access and operations.
+- **IAM Roles and Policies**: For managing permissions and access controls.
+- **Monitoring and Logging**: Using Grafana, Loki, Promtail, and Prometheus.
 
-1. Jenkins
-Jenkins is used as the CI/CD tool running in a Docker container. It has two main jobs:
+## Architecture Diagram
 
-Build Job: This job pulls the source code from the GitHub repository, builds the Docker images for the frontend and backend services, and pushes them to Docker Hub.
-Deploy Job: This job deploys the Docker images from Docker Hub to the target EC2 instances using Ansible.
-2. Ansible
-Ansible is used for configuration management and deployment. It handles tasks such as:
+*Include an architecture diagram here illustrating the setup.*
 
-Setting up the environment on EC2 instances
-Installing Docker
-Deploying the application
-Key Playbooks:
-deploy-main.yaml: Main playbook for deploying the application.
-install_docker.yaml: Playbook to install Docker on EC2 instances.
-prepare_environment.yaml: Playbook to prepare the environment for the application.
-deploy-deploy_script.yaml: Playbook to copy and execute the deployment script on EC2 instances.
-3. Terraform
-Terraform is used for provisioning the infrastructure on AWS. It manages the creation and configuration of EC2 instances.
+## Setup and Installation
 
-Key Files:
-main.tf: Defines the infrastructure resources.
-variables.tf: Contains variable definitions.
-outputs.tf: Defines the output values.
-provider.tf: Configures the AWS provider.
-4. Docker
-Docker is used for containerizing the application. The application consists of two Docker images:
+### Prerequisites
 
-Frontend: A simple web app that receives a string input.
-Backend: A FastAPI application that processes the input and returns price data about a Solana SPL token.
-5. Application Repository
-The application repository contains the source code for the frontend and backend services. It also contains the Jenkinsfile used to build and push Docker images.
+- AWS account
+- Terraform installed
+- Ansible installed
+- kubectl installed
+- Helm installed
+- Docker installed
 
-6. Dynamic Inventory Script
-The aws_ec2_inventory.py script dynamically generates an inventory of running EC2 instances, and it can use filters to work with the instance tags. It uses AWS credentials configured on the Jenkins server to access AWS and retrieve instance information.
+### Installation Steps
 
-Deployment Process
--Build and Push Docker Images:
+1. **Clone the Repository**
+   git clone https://github.com/yourusername/your-repo.git
+   cd your-repo
 
-Jenkins pulls the latest source code from GitHub.
-Jenkins builds the Docker images for the frontend and backend services.
-Jenkins pushes the images to Docker Hub.
+Infrastructure Setup with Terraform
+Apply the Terraform configurations in the following order:
 
--Deploy Docker Images to EC2:
+Networking:
 
-Jenkins triggers the deployment job.
-Ansible playbooks are executed to set up the environment on EC2 instances, install Docker, and deploy the application.
+cd terraform/production/networking
+terraform init
+terraform apply
 
-The Docker images are pulled from Docker Hub into the EC2 instances;
-The deploy.sh script is copied to the EC2 instances and executed to pull the latest Docker images from Docker Hub and run them with the porst configured on Configuration File config.json
+Admin:
 
-Example:
+cd ../admin
+terraform init
+terraform apply
 
-{
-  "frontend": {
-    "port": 3000
-  },
-  "backend": {
-    "port": 5000
-  }
-}
-Jenkinsfile
-The Jenkinsfile in the applications/solana-spl-momentum-scanner/ directory is used to define the deployment pipeline for the application. It will probably be moved into the app source code repo in the future.
+Kubernetes Cluster:
 
-Conclusion
-This documentation provides a high-level overview of the CI/CD pipeline setup using Jenkins, Ansible, Terraform, and Docker. The system automates the process of building, pushing, and deploying Docker images for a web application to AWS EC2 instances.
+cd ../k8s_cluster
+terraform init
+terraform apply
 
-For more detailed information, refer to the individual playbooks, scripts, and configuration files mentioned in this document.
+Notifications (CloudWatch):
+
+cd ../notifications
+terraform init
+terraform apply
+
+Kubernetes Cluster Setup with Ansible
+
+ansible-playbook ansible/playbooks/kubernetes/setup_kubernetes_cluster.yml
+ansible-playbook ansible/playbooks/kubernetes/setup_kubectl_auth.yml
+
+Install Monitoring Tools with Ansible
 
 
---------------------------------------------
+ansible-playbook ansible/playbooks/kubernetes/install_grafana_loki.yml
+ansible-playbook ansible/playbooks/kubernetes/install_prometheus.yml
 
-Important commands
 
+Configure the Admin Server
 
-  docker run -d \
+ansible-playbook ansible/prepare_env.yml
+Run Jenkins on Admin Server
+
+docker run -d \
   --name jenkins \
-  --group-add $(getent group docker | cut -d: -f3) \
   -p 8080:8080 \
   -p 50000:50000 \
-  -v /root/aws_credentials:/root/.aws \
+  -v /root/aws_credentials:/home/ec2-user/.aws \
   -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /home/ec2-user/devops_setup:/home/ec2-user/devops_setup \
   -v /home/tluz/jenkins_home:/var/jenkins_home \
   -v /root/project:/root/project \
   --user root \
-  custom-jenkins
+  my-jenkins
 
 
-echo 'export ANSIBLE_PRIVATE_KEY_FILE=/root/.ssh/my-key-pair' >> ~/.bashrc
+Usage
+
+Deploying Applications
+Build Application
+
+Jenkins job to build the application:
+
+Go to Jenkins dashboard
+Trigger the build job
+Deploy Application
+
+Jenkins job to deploy the application:
+
+Go to Jenkins dashboard
+Trigger the deploy job
+Accessing Grafana Dashboards
+
+Port Forward Grafana
+
+kubectl port-forward svc/grafana 3000:3000
+
+Open Grafana
+Navigate to http://localhost:3000 in your browser.
+
+CI/CD Pipeline
+The CI/CD pipeline is set up using Jenkins, integrated with Docker Hub, Git, and AWS. It includes:
+
+Build Job: Automates building of a simple web application.
+Deploy Job: Automates deployment of the web application into the Kubernetes cluster.
+
+Monitoring and Logging
+Monitoring and logging are set up using Grafana, Loki, Promtail, and Prometheus. These tools provide insights into the health and performance of the infrastructure and applications.
+
+Contribution Guidelines
+Contributions are welcome! Please submit a pull request or open an issue to discuss any changes or additions.
+
+License
+This project is licensed under the MIT License.
+
+Contact Information
+For any questions or inquiries, feel free to contact me:
+
+Email: [your-email@example.com]
+LinkedIn: [Your LinkedIn Profile]
+GitHub: [Your GitHub Profile]
+markdown
+Copiar código
+
+### Additional Documentation
+
+1. **Detailed Documentation for Each Component**:
+   - Create separate markdown files or Wiki pages in your GitHub repository for detailed documentation of each component (e.g., Terraform setup, Ansible playbooks, Jenkins pipeline, monitoring tools).
+
+2. **Examples and Screenshots**:
+   - Include examples of commands, configuration files, and screenshots to make the documentation more user-friendly.
+
+3. **Troubleshooting Section**:
+   - Add a section for common issues and troubleshooting tips.
+
+Feel free to fill in any missing details or let me know if you need further clarification on any pa

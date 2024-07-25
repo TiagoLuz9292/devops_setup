@@ -1,0 +1,40 @@
+this is the structure;
+
+for the cloud infrastructure, terraform/production and then first apply the networking folder, then the admin, then the k8s_cluster, then the notifications (cloudwatch)
+
+the apply on k8s_cluster will create master instance, will configure it, and only when it finishes configuring it, the asg will start the initial needed worker nodes, inside the launch template for worker nodes it has user data with the bash commands to install and setup everything needed on worker, including performing the join command automatically;
+
+
+
+on ansible/playbooks there are playbooks to install kind and k3s clusters, and docker, but we are using the folder ansible/playbooks/kubernetes. the master node configuration calls this /home/ec2-user/devops_setup/ansible/playbooks/kubernetes/setup_kubernetes_cluster.sh that calls the yaml file with same name to setup master, and after that calls /home/ec2-user/devops_setup/ansible/playbooks/kubernetes/setup_kubectl_auth.sh that calls the playbook yaml with the same name, that configures the kubeconfig file on admin server for it to be able to access with kubectl;
+
+then /home/ec2-user/devops_setup/ansible/playbooks/kubernetes/install_grafana_loki.sh installs grafana and loki and promtail with helmcharts, the config files are already ready with the right configs for it to work in/home/ec2-user/devops_setup/kubernetes/loki/loki.yaml
+
+and prometheus is installed with /home/ec2-user/devops_setup/ansible/playbooks/kubernetes/install_prometheus.sh
+
+
+note that  /home/ec2-user/devops_setup/ansible/playbooks/kubernetes/install_helm_prom_graf.sh and the yaml with same name are not being used
+
+
+
+this path /home/ec2-user/devops_setup/ansible/inventory has the ansible inventory and python script to generate the inventory from aws account
+
+/home/ec2-user/devops_setup/admin_server here its /home/ec2-user/devops_setup/admin_server/prepare_env.sh for setup of needed things on admin server
+
+
+below is the command used to run jenkins on admin server with the needed mounts for everything to work:
+
+ docker run -d \
+  --name jenkins \
+  -p 8080:8080 \
+  -p 50000:50000 \
+  -v /root/aws_credentials:/home/ec2-user/.aws \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /home/ec2-user/devops_setup:/home/ec2-user/devops_setup \
+  -v /home/tluz/jenkins_home:/var/jenkins_home \
+  -v /root/project:/root/project \
+  --user root \
+  my-jenkins
+
+
+if you need more details just ask me

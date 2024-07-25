@@ -102,7 +102,7 @@
 
     - name: Set master private IP globally
       set_fact:
-        global_master_private_ip: "{{ master_private_ip }}"    
+        global_master_private_ip: "{{ master_private_ip }}"
 
 - name: Fetch kubeconfig for Jenkins to local machine
   hosts: localhost
@@ -113,11 +113,16 @@
         state: directory
         mode: '0755'
 
+    - name: Remove old host key for the master node
+      shell: |
+        ssh-keygen -R {{ hostvars['master']['global_master_private_ip'] }}
+      ignore_errors: yes
+
     - name: Fetch kubeconfig file using scp
       delegate_to: localhost
       become: true
       ansible.builtin.command:
-        cmd: scp -i /home/ec2-user/.ssh/my-key-pair ec2-user@{{ hostvars['master']['global_master_private_ip'] }}:/tmp/kubeconfig-jenkins.yaml /home/ec2-user/.ssh/kubeconfig-jenkins.yaml
+        cmd: scp -o StrictHostKeyChecking=no -i /home/ec2-user/.ssh/my-key-pair ec2-user@{{ hostvars['master']['global_master_private_ip'] }}:/tmp/kubeconfig-jenkins.yaml /home/ec2-user/.ssh/kubeconfig-jenkins.yaml
 
     - name: Export KUBECONFIG environment variable
       shell: |
