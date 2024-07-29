@@ -41,9 +41,19 @@ resource "aws_iam_policy" "admin_policy" {
           "dynamodb:PutItem",
           "dynamodb:Scan",
           "dynamodb:Query",
-          "dynamodb:UpdateItem"
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:BatchGetItem",
+          "dynamodb:BatchWriteItem"
         ],
         Resource = "arn:aws:dynamodb:eu-north-1:891377403327:table/terraform-state-locks"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "ec2:DescribeInstances"
+        ],
+        Resource = "*"
       }
     ]
   })
