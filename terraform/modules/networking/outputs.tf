@@ -1,3 +1,5 @@
+# modules/networking/outputs.tf
+
 output "public_subnet_id1" {
   value = aws_subnet.public1.id
 }
