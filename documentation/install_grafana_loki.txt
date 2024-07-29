@@ -21,7 +21,7 @@ Now, every component has been deployed properly on the Kubernetes cluster, port-
 
 Use the following command to port-forward Grafana on port 9090.
 
-kubectl port-forward pod/loki-grafana-75499f7c6b-99csg -n grafana-loki 9090:3000
+kubectl port-forward pod/loki-grafana-7cd556cb88-hqbmf -n grafana-loki 9090:3000
 
 
 kubectl get secret --namespace grafana-loki loki-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo

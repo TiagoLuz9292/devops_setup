@@ -1,17 +1,13 @@
 data "terraform_remote_state" "networking" {
-  backend = "local"
+  backend = "s3"
+
   config = {
-    path = "../networking/terraform.tfstate"
+    bucket         = "terraform-state-2024-1a"
+    key            = "networking/vpc_main/terraform.tfstate"
+    region         = "eu-north-1"
+    dynamodb_table = "terraform-state-locks"
   }
 }
-
-data "terraform_remote_state" "admin" {
-  backend = "local"
-  config = {
-    path = "../admin/terraform.tfstate"
-  }
-}
-
 
 resource "aws_iam_policy" "worker_policy" {
   name        = "worker_policy"
@@ -212,6 +208,7 @@ resource "aws_launch_template" "worker" {
 resource "aws_autoscaling_group" "k8s_asg" {
   depends_on = [null_resource.provision_master]
   
+  name                 = "k8s_asg"
   desired_capacity     = 1
   max_size             = 4
   min_size             = 1
@@ -345,7 +342,7 @@ resource "aws_autoscaling_policy" "scale_out_policy" {
   name                   = "scale-out"
   scaling_adjustment     = 1
   adjustment_type        = "ChangeInCapacity"
-  cooldown               = 300
+  cooldown               = 60
   autoscaling_group_name = aws_autoscaling_group.k8s_asg.name
 }
 
@@ -353,6 +350,6 @@ resource "aws_autoscaling_policy" "scale_in_policy" {
   name                   = "scale-in"
   scaling_adjustment     = -1
   adjustment_type        = "ChangeInCapacity"
-  cooldown               = 300
+  cooldown               = 60
   autoscaling_group_name = aws_autoscaling_group.k8s_asg.name
 }

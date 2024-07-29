@@ -45,7 +45,7 @@ The infrastructure includes:
 ### Installation Steps
 
 1. **Clone the Repository**
-   git clone https://github.com/yourusername/your-repo.git
+   git clone https://github.com/TiagoLuz9292/devops_setup.git
    cd your-repo
 
 Infrastructure Setup with Terraform
@@ -53,7 +53,7 @@ Apply the Terraform configurations in the following order:
 
 Networking:
 
-cd terraform/production/networking
+cd devops_setup/terraform/production/networking
 terraform init
 terraform apply
 
@@ -80,11 +80,13 @@ Kubernetes Cluster Setup with Ansible
 ansible-playbook ansible/playbooks/kubernetes/setup_kubernetes_cluster.yml
 ansible-playbook ansible/playbooks/kubernetes/setup_kubectl_auth.yml
 
-Install Monitoring Tools with Ansible
+Install Grafana + Promtail + Loki (Loki data source comes already setup on Grafana)
 
+/home/ec2-user/devops_setup/ansible/playbooks/kubernetes/install_grafana_loki.sh
 
-ansible-playbook ansible/playbooks/kubernetes/install_grafana_loki.yml
-ansible-playbook ansible/playbooks/kubernetes/install_prometheus.yml
+Install Prometheus (Prometheus data source needs to be added manually on Grafana with this url: )
+
+/home/ec2-user/devops_setup/ansible/playbooks/kubernetes/install_prometheus.sh
 
 
 Configure the Admin Server
@@ -124,10 +126,10 @@ Accessing Grafana Dashboards
 
 Port Forward Grafana
 
-kubectl port-forward svc/grafana 3000:3000
+kubectl port-forward pod/loki-grafana-75499f7c6b-99csg -n grafana-loki 9090:3000     #Replace with the name of the grafana pod
 
 Open Grafana
-Navigate to http://localhost:3000 in your browser.
+Navigate to http://localhost:9090 in your browser.
 
 CI/CD Pipeline
 The CI/CD pipeline is set up using Jenkins, integrated with Docker Hub, Git, and AWS. It includes:
@@ -136,32 +138,19 @@ Build Job: Automates building of a simple web application.
 Deploy Job: Automates deployment of the web application into the Kubernetes cluster.
 
 Monitoring and Logging
+
 Monitoring and logging are set up using Grafana, Loki, Promtail, and Prometheus. These tools provide insights into the health and performance of the infrastructure and applications.
 
 Contribution Guidelines
+
 Contributions are welcome! Please submit a pull request or open an issue to discuss any changes or additions.
 
-License
-This project is licensed under the MIT License.
+
 
 Contact Information
 For any questions or inquiries, feel free to contact me:
 
-Email: [your-email@example.com]
-LinkedIn: [Your LinkedIn Profile]
-GitHub: [Your GitHub Profile]
-markdown
-Copiar código
+Email: [tiagoluz92@gmail.com]
+LinkedIn: [https://www.linkedin.com/in/tiagoluz92]
+GitHub: [https://github.com/TiagoLuz9292]
 
-### Additional Documentation
-
-1. **Detailed Documentation for Each Component**:
-   - Create separate markdown files or Wiki pages in your GitHub repository for detailed documentation of each component (e.g., Terraform setup, Ansible playbooks, Jenkins pipeline, monitoring tools).
-
-2. **Examples and Screenshots**:
-   - Include examples of commands, configuration files, and screenshots to make the documentation more user-friendly.
-
-3. **Troubleshooting Section**:
-   - Add a section for common issues and troubleshooting tips.
-
-Feel free to fill in any missing details or let me know if you need further clarification on any pa

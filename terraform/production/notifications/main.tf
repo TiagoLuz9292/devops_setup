@@ -51,10 +51,10 @@ resource "aws_iam_role_policy" "autoscaling_policy" {
 resource "aws_cloudwatch_metric_alarm" "high_cpu" {
   alarm_name          = "high-cpu-alarm"
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = 21
+  evaluation_periods  = 2
   metric_name         = "CPUUtilization"
   namespace           = "AWS/EC2"
-  period              = 120
+  period              = 60
   statistic           = "Average"
   threshold           = 50
   alarm_description   = "This metric monitors the average CPU usage for the ASG."
@@ -70,9 +70,9 @@ resource "aws_cloudwatch_metric_alarm" "low_cpu" {
   evaluation_periods  = 2
   metric_name         = "CPUUtilization"
   namespace           = "AWS/EC2"
-  period              = 120
+  period              = 60
   statistic           = "Average"
-  threshold           = 20
+  threshold           = 30
   alarm_description   = "This metric monitors the average CPU usage for the ASG."
   dimensions = {
     AutoScalingGroupName = data.terraform_remote_state.k8s_cluster.outputs.asg_name
