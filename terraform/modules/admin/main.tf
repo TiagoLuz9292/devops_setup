@@ -189,6 +189,6 @@ resource "aws_instance" "admin" {
   iam_instance_profile = aws_iam_instance_profile.admin_instance_profile.name
 
   tags = merge({
-    Name = "admin-instance"
+    Name = var.instance_name
   }, var.environment_tags)
 }

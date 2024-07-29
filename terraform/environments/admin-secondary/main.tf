@@ -11,6 +11,6 @@ module "admin" {
   instance_type      = var.instance_type
   instance_ami       = var.instance_ami
   key_name           = var.key_name
-  instance_name      = "admin-main"
+  instance_name      = "admin-secondary"
   environment_tags   = var.environment_tags
 }

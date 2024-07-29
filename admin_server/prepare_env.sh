@@ -1,3 +1,8 @@
+#create private key, and make chmod 600
+sudo chmod 600 /home/ec2-user/.ssh/my-key-pair
+eval "$(ssh-agent -s)"
+ssh-add /home/ec2-user/.ssh/my-key-pair
+
 sudo yum install -y yum-utils
 sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
 sudo yum -y install terraform
@@ -21,8 +26,7 @@ chmod 700 get_helm.sh
 
 #copy ed25519 amd ed25519.pub key into new server 
 
-eval "$(ssh-agent -s)"
-ssh-add /home/ec2-user/.ssh/my-key-pair
+
 
 echo 'eval "$(ssh-agent -s)"' >> ~/.bashrc
 echo 'ssh-add /home/ec2-user/.ssh/my-key-pair' >> ~/.bashrc
