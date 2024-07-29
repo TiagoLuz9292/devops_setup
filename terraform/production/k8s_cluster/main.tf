@@ -9,86 +9,28 @@ data "terraform_remote_state" "networking" {
   }
 }
 
-resource "aws_iam_policy" "worker_policy" {
-  name        = "worker_policy"
-  description = "Policy for worker nodes to access SSM and EC2 describe instances"
-  policy      = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = [
-          "ssm:GetParameter",
-          "ssm:PutParameter",
-          "ec2:DescribeInstances"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
-}
-resource "aws_iam_role" "master_role" {
-  name               = "master-role"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action    = "sts:AssumeRole"
-        Effect    = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
-      }
-    ]
-  })
+data "terraform_remote_state" "iam" {
+  backend = "s3"
+
+  config = {
+    bucket         = "terraform-state-2024-1a"
+    key            = "iam/terraform.tfstate"
+    region         = "eu-north-1"
+    dynamodb_table = "terraform-state-locks"
+  }
 }
 
-resource "aws_iam_role" "worker_role" {
-  name               = "worker-role"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action    = "sts:AssumeRole"
-        Effect    = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "master_policy_attachment" {
-  role       = aws_iam_role.master_role.name
-  policy_arn = aws_iam_policy.worker_policy.arn
-}
-
-resource "aws_iam_role_policy_attachment" "worker_policy_attachment" {
-  role       = aws_iam_role.worker_role.name
-  policy_arn = aws_iam_policy.worker_policy.arn
-}
-
-resource "aws_iam_instance_profile" "master_instance_profile" {
-  name = "master-instance-profile"
-  role = aws_iam_role.master_role.name
-}
-
-resource "aws_iam_instance_profile" "worker_instance_profile" {
-  name = "worker-instance-profile"
-  role = aws_iam_role.worker_role.name
-}
 
 
 # Create the Kubernetes master instance
 resource "aws_instance" "master" {
-  ami           = "ami-052387465d846f3fc"  # Change to an appropriate AMI ID for your region
-  instance_type = "t3.medium"
-  subnet_id     = data.terraform_remote_state.networking.outputs.public_subnet_id1
-  vpc_security_group_ids = [data.terraform_remote_state.networking.outputs.instance_security_group_id]
-  key_name      = var.key_name
-  associate_public_ip_address = true
-  iam_instance_profile        = aws_iam_instance_profile.master_instance_profile.name
+  ami                           = "ami-052387465d846f3fc"  # Change to an appropriate AMI ID for your region
+  instance_type                 = "t3.medium"
+  subnet_id                     = data.terraform_remote_state.networking.outputs.public_subnet_id1
+  vpc_security_group_ids        = [data.terraform_remote_state.networking.outputs.instance_security_group_id]
+  key_name                      = var.key_name
+  associate_public_ip_address   = true
+  iam_instance_profile          = data.terraform_remote_state.iam.outputs.master_instance_profile_name
 
   tags = {
     Name  = "K8s-Master"
@@ -100,13 +42,12 @@ resource "aws_instance" "master" {
 # Create the worker instances in two subnets for high availability
 # Povision worker instances
 resource "aws_launch_template" "worker" {
-  name_prefix   = "k8s-worker-"
-  image_id      = "ami-052387465d846f3fc"  # Change to an appropriate AMI ID for your region
-  instance_type = "t3.medium"
-  key_name      = var.key_name
-  iam_instance_profile {
-    name = aws_iam_instance_profile.worker_instance_profile.name
-  }
+  name_prefix                   = "k8s-worker-"
+  image_id                      = "ami-052387465d846f3fc"  # Change to an appropriate AMI ID for your region
+  instance_type                 = "t3.medium"
+  key_name                      = var.key_name
+  iam_instance_profile          = data.terraform_remote_state.iam.outputs.worker_instance_profile_name
+  
 
   network_interfaces {
     associate_public_ip_address = true
