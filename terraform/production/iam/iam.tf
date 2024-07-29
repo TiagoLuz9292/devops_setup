@@ -51,17 +51,32 @@ resource "aws_iam_policy" "admin_policy" {
       {
         Effect = "Allow",
         Action = [
-          "ec2:DescribeInstances",
-          "ec2:DescribeInstanceTypes",
-          "ec2:DescribeTags",
-          "ec2:DescribeInstanceAttribute",
-          "ec2:DescribeVolumes",
-          "ec2:DescribeInstanceCreditSpecifications",
-          "ec2:DescribeAddresses",
-          "ec2:DescribeAddressesAttribute",
-          "ec2:StopInstances",
-          "ec2:ModifyInstanceAttribute",
-          "ec2:StartInstances"
+          "ec2:*"
+        ],
+        Resource = "*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:UpdateRole",
+          "iam:GetRole",
+          "iam:ListRoles",
+          "iam:PassRole",
+          "iam:CreatePolicy",
+          "iam:DeletePolicy",
+          "iam:UpdatePolicy",
+          "iam:GetPolicy",
+          "iam:ListPolicies",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+          "iam:CreateInstanceProfile",
+          "iam:DeleteInstanceProfile",
+          "iam:AddRoleToInstanceProfile",
+          "iam:RemoveRoleFromInstanceProfile",
+          "iam:GetInstanceProfile",
+          "iam:ListInstanceProfiles"
         ],
         Resource = "*"
       }
