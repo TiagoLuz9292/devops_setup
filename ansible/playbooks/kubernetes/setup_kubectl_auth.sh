@@ -1,8 +1,19 @@
 #!/bin/bash
 
+# Check if the environment parameter is provided
+if [ -z "$1" ]; then
+  echo "Usage: $0 <environment>"
+  exit 1
+fi
 
-# Extract master private IP from inventory
-MASTER_PRIVATE_IP=$(grep -A1 "\[master\]" $INVENTORY_DIR | tail -n1 | awk '{print $2}' | cut -d'=' -f2)
+ENVIRONMENT=$1
+
+# Define the inventory directory and the playbook directory
+INVENTORY_DIR="/home/ec2-user/devops_setup/ansible/inventory/${ENVIRONMENT}_inventory"
+K8S_PLAYBOOK_DIR="/home/ec2-user/devops_setup/ansible/playbooks/kubernetes"
+
+# Extract master private IP from the inventory
+MASTER_PRIVATE_IP=$(grep -A1 "\[${ENVIRONMENT}_master\]" ${INVENTORY_DIR}/inventory | tail -n1 | awk '{print $2}' | cut -d'=' -f2)
 
 # Check if the IP was extracted successfully
 if [ -z "$MASTER_PRIVATE_IP" ]; then
@@ -11,4 +22,4 @@ if [ -z "$MASTER_PRIVATE_IP" ]; then
 fi
 
 # Run the Ansible playbook with the extracted private IP
-ansible-playbook -i $INVENTORY_DIR $K8S_PLAYBOOK_DIR/setup_kubectl_auth.yaml --extra-vars "master_private_ip=$MASTER_PRIVATE_IP" -v
+ansible-playbook -i ${INVENTORY_DIR}/inventory ${K8S_PLAYBOOK_DIR}/setup_kubectl_auth.yaml --extra-vars "master_private_ip=${MASTER_PRIVATE_IP}" -v

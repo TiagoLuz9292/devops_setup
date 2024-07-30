@@ -15,11 +15,6 @@ variable "subnet_cidr2" {
   type        = string
 }
 
-variable "admin_subnet_cidr" {
-  description = "CIDR block for the admin subnet"
-  type        = string
-}
-
 variable "availability_zone1" {
   description = "Availability zone for the first public subnet"
   type        = string
@@ -45,10 +40,6 @@ variable "subnet_name2" {
   type        = string
 }
 
-variable "admin_subnet_name" {
-  description = "Name of the admin subnet"
-  type        = string
-}
 
 variable "igw_name" {
   description = "Name of the Internet Gateway"

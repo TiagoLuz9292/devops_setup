@@ -1,0 +1,11 @@
+[DEV_all]
+master ansible_host=10.0.1.103 ansible_user=ec2-user
+admin ansible_host= ansible_user=ec2-user
+
+[DEV_master]
+master ansible_host=10.0.1.103 ansible_user=ec2-user
+
+[DEV_admin]
+admin ansible_host= ansible_user=ec2-user
+
+[DEV_worker]

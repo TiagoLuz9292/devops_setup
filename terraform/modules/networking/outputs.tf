@@ -1,15 +1,23 @@
 # modules/networking/outputs.tf
 
+output "vpc_id" {
+  value = aws_vpc.main.id
+}
+
+output "route_table_id" {
+  value = aws_route_table.routetable.id
+}
+
+output "vpc_cidr" {
+  value = aws_vpc.main.cidr_block
+}
+
 output "public_subnet_id1" {
   value = aws_subnet.public1.id
 }
 
 output "public_subnet_id2" {
   value = aws_subnet.public2.id
-}
-
-output "admin_subnet_id" {
-  value = aws_subnet.admin.id
 }
 
 output "instance_security_group_id" {

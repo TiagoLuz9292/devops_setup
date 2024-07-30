@@ -69,11 +69,6 @@ resource "aws_route_table_association" "public_association2" {
   route_table_id = aws_route_table.routetable.id
 }
 
-# Route Table Association for Admin Subnet
-resource "aws_route_table_association" "admin_association" {
-  subnet_id      = aws_subnet.admin.id
-  route_table_id = aws_route_table.routetable.id
-}
 
 resource "aws_security_group" "elb" {
   vpc_id = aws_vpc.main.id
@@ -239,3 +234,6 @@ resource "aws_lb_target_group" "k8s_target_group" {
     Name = var.k8s_target_group_name
   }, var.environment_tags)
 }
+
+
+

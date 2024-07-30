@@ -1,0 +1,1 @@
+/home/ec2-user/devops_setup/ansible/inventory/generate_inventory_v2.sh DEV

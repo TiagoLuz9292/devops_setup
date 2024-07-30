@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Fetch the private IP of the master node
-MASTER_PRIVATE_IP=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=K8s-Master" "Name=instance-state-name,Values=running" --query "Reservations[*].Instances[*].PrivateIpAddress" --output text)
+MASTER_PRIVATE_IP=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=K8s-Master-DEV" "Name=instance-state-name,Values=running" --query "Reservations[*].Instances[*].PrivateIpAddress" --output text)
 
 # Fetch the private IP of the admin node
 ADMIN_PRIVATE_IP=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=Admin-Server" "Name=instance-state-name,Values=running" --query "Reservations[*].Instances[*].PrivateIpAddress" --output text)
