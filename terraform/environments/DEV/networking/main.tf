@@ -25,6 +25,9 @@ data "terraform_remote_state" "admin" {
   }
 }
 
+
+
+
 module "networking" {
   source = "../../../modules/networking"
 
@@ -47,9 +50,10 @@ module "networking" {
 }
 
 
+
 resource "aws_vpc_peering_connection" "peer" {
   vpc_id        = module.networking.vpc_id
-  peer_vpc_id   = data.terraform_remote_state.admin.outputs.vpc_id
+  peer_vpc_id   = "vpc-0d30e70c2c0d27b26"
   peer_region   = "eu-north-1"
   auto_accept   = false
 
@@ -71,12 +75,12 @@ resource "aws_vpc_peering_connection_accepter" "peer_accept" {
 # Add routes to allow traffic between VPCs
 resource "aws_route" "dev_to_admin" {
   route_table_id         = module.networking.route_table_id
-  destination_cidr_block = data.terraform_remote_state.admin.outputs.vpc_cidr
+  destination_cidr_block = "10.5.0.0/16"
   vpc_peering_connection_id = aws_vpc_peering_connection.peer.id
 }
 
 resource "aws_route" "admin_to_dev" {
-  route_table_id         = data.terraform_remote_state.admin.outputs.route_table_id
+  route_table_id         = "rtb-0b598cb26d187e903"
   destination_cidr_block = module.networking.vpc_cidr
   vpc_peering_connection_id = aws_vpc_peering_connection.peer.id
 }

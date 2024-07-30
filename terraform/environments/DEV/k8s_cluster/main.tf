@@ -14,6 +14,15 @@ data "terraform_remote_state" "iam" {
   }
 }
 
+data "terraform_remote_state" "networking" {
+  backend = "s3"
+  config = {
+    bucket = "terraform-state-2024-1a"
+    key    = "DEV/networking/terraform.tfstate"
+    region = "eu-north-1"
+  }
+}
+
 
 module "k8s_cluster" {
   source = "../../../modules/k8s_cluster"
@@ -32,10 +41,13 @@ module "k8s_cluster" {
   worker_user_data       = file("${path.module}/worker_user_data.sh")
   environment            = "DEV"
   update_inventory_command = file("${path.module}/update_inventory.sh")
-  subnet_id              = module.networking.public_subnet_id1
-  subnet_ids             = [module.networking.public_subnet_id1, module.networking.public_subnet_id2]
-  security_group_id      = module.networking.instance_security_group_id
+  subnet_id              = data.terraform_remote_state.networking.outputs.public_subnet_id1
+  subnet_ids           = [
+    data.terraform_remote_state.networking.outputs.public_subnet_id1,
+    data.terraform_remote_state.networking.outputs.public_subnet_id2
+  ]
+  security_group_id      = data.terraform_remote_state.networking.outputs.instance_security_group_id
   master_instance_profile = data.terraform_remote_state.iam.outputs.master_instance_profile_name
   worker_instance_profile = data.terraform_remote_state.iam.outputs.worker_instance_profile_name
-  lb_target_group_arn    = module.networking.lb_target_group_arn
+  lb_target_group_arn    = data.terraform_remote_state.networking.outputs.lb_target_group_arn
 }
