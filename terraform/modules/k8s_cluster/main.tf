@@ -39,16 +39,36 @@ resource "aws_launch_template" "worker" {
   user_data = base64encode(var.worker_user_data)
 }
 
-resource "aws_autoscaling_group" "k8s_asg" {
-  depends_on = [null_resource.provision_master]
+resource "aws_lb_target_group" "k8s_target_group" {
+  name        = "dev-k8s-tg"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = var.vpc_id
+  target_type = "instance"
 
+  health_check {
+    interval            = 30
+    path                = "/"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = 5
+    unhealthy_threshold = 2
+    healthy_threshold   = 2
+  }
+
+  tags = {
+    Name = "dev-k8s-tg"
+  }
+}
+
+
+resource "aws_autoscaling_group" "k8s_asg" {
   name                 = "k8s_asg"
   desired_capacity     = var.desired_capacity
   max_size             = var.max_size
   min_size             = var.min_size
   vpc_zone_identifier  = var.subnet_ids
-
-  target_group_arns = [var.lb_target_group_arn]
+   target_group_arns    = [aws_lb_target_group.k8s_target_group.arn]
 
   tag {
     key                 = "Name"
@@ -86,22 +106,60 @@ resource "null_resource" "provision_master" {
 
   provisioner "local-exec" {
     command = <<EOT
-      bash /home/ec2-user/devops_setup/terraform/environments/${var.environment}/provision_master.sh ${var.environment} ${aws_instance.master.private_ip} ${var.private_key_path} ${var.region}
+      #!/bin/bash
+      set -e
+
+      ENVIRONMENT="${var.environment}"
+      MASTER_IP=${aws_instance.master.private_ip}
+      PRIVATE_KEY_PATH="/home/ec2-user/.ssh/my-key-pair"
+      AWS_REGION="eu-north-1"
+      PARAMETER_NAME="k8s-join-command"
+
+      # Ensure correct permissions for the private key
+      chmod 600 $PRIVATE_KEY_PATH
+      eval "$(ssh-agent -s)"
+      ssh-add $PRIVATE_KEY_PATH
+
+      # Wait until the instance is available
+      while ! nc -z -w5 $MASTER_IP 22; do
+        echo "Waiting for instance to be available at IP $MASTER_IP..."
+        sleep 10
+      done
+
+      # Add the master IP to known hosts to avoid SSH prompt
+      ssh-keygen -R $MASTER_IP -f ~/.ssh/known_hosts || true
+      ssh-keyscan -H $MASTER_IP >> ~/.ssh/known_hosts
+
+      # Test SSH connection
+      echo "Testing SSH connection to master..."
+      ssh -o StrictHostKeyChecking=no -i $PRIVATE_KEY_PATH ec2-user@$MASTER_IP "echo 'SSH connection successful'"
+
+      # Run the script on the admin server to execute the Ansible playbook
+      echo "Starting the Ansible Playbook for Kubernetes installation on master"
+      echo "private key path: $PRIVATE_KEY_PATH"
+      bash /home/ec2-user/devops_setup/ansible/playbooks/kubernetes/setup_kubernetes_cluster.sh $MASTER_IP $PRIVATE_KEY_PATH > terraform_provision_master.log 2>&1
+      if [ $? -ne 0 ]; then
+        echo "Failed to run setup_kubernetes_cluster.sh. Check terraform_provision_master.log for details."
+        exit 1
+      fi
+
+      # Run the Ansible playbook to configure kubectl authentication
+      echo "Starting the Ansible Playbook for kubectl authentication setup"
+      bash /home/ec2-user/devops_setup/ansible/playbooks/kubernetes/setup_kubectl_auth.sh $MASTER_IP $PRIVATE_KEY_PATH > kubeconfig_setup.log 2>&1
+      if [ $? -ne 0 ]; then
+        echo "Failed to run setup_kubectl_auth.sh. Check kubeconfig_setup.log for details."
+        exit 1
+      fi
+
+      # Retrieve the join command
+      JOIN_COMMAND=$(ssh -o StrictHostKeyChecking=no -i $PRIVATE_KEY_PATH ec2-user@$MASTER_IP "sudo kubeadm token create --print-join-command")
+
+      # Store the join command in SSM Parameter Store
+      aws ssm put-parameter --name $PARAMETER_NAME --value "$JOIN_COMMAND" --type "String" --overwrite --region $AWS_REGION
     EOT
   }
 }
 
-resource "null_resource" "update_inventory" {
-  depends_on = [aws_instance.master]
-
-  provisioner "local-exec" {
-    command = var.update_inventory_command
-  }
-
-  triggers = {
-    master_ip = aws_eip.master_eip.public_ip
-  }
-}
 resource "aws_autoscaling_policy" "scale_out_policy" {
   name                   = "scale-out"
   scaling_adjustment     = 1
