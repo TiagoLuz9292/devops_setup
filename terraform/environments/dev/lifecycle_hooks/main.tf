@@ -13,6 +13,7 @@ data "terraform_remote_state" "k8s" {
 }
 
 
+
 resource "aws_iam_role" "lambda_iam_role" {
   name = "lambda_iam_role"
   assume_role_policy = jsonencode({
@@ -38,9 +39,17 @@ resource "aws_iam_role_policy" "lambda_policy" {
         Action = [
           "autoscaling:CompleteLifecycleAction",
           "autoscaling:DescribeAutoScalingInstances",
-          "ec2:DescribeInstances",
           "logs:*",
-          "sts:AssumeRole"
+          "sts:AssumeRole",
+          "ec2:DescribeInstances",
+          "ec2:CreateNetworkInterface",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DeleteNetworkInterface",
+          "ec2:AttachNetworkInterface",
+          "ec2:DetachNetworkInterface",
+          "ec2:ModifyNetworkInterfaceAttribute",
+          "ec2:AssignPrivateIpAddresses",
+          "ec2:UnassignPrivateIpAddresses"
         ],
         Resource = "*"
       }
@@ -56,6 +65,31 @@ resource "aws_lambda_function" "drain_node" {
   source_code_hash = filebase64sha256("${path.module}/lambda_function.zip")
   runtime          = "python3.8"
   timeout          = 350
+
+
+}
+
+
+
+
+
+resource "aws_security_group" "lambda_sg" {
+  name        = "lambda_sg"
+  description = "Security group for Lambda function"
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/16"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
 resource "aws_sns_topic" "asg_lifecycle_notifications" {

@@ -2,3 +2,8 @@ kubectl apply -f /home/ec2-user/devops_setup/kubernetes/stress_test/cpu-stress-d
 
 
 kubectl delete deployment cpu-stress
+
+kubeadm init --apiserver-advertise-address="10.1.1.221" --apiserver-cert-extra-sans="10.1.1.221,13.60.127.255" --pod-network-cidr="10.244.0.0/16" --node-name "master" --ignore-preflight-errors Swap
+
+
+openssl x509 -in /etc/kubernetes/pki/apiserver.crt -text -noout | grep -A 1 "X509v3 Subject Alternative Name"

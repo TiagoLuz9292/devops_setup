@@ -17,9 +17,9 @@ master_instance_name   = "k8s-master-dev"
 worker_ami             = "ami-052387465d846f3fc"
 worker_instance_name   = "k8s-worker-dev"
 worker_user_data       = "your-user-data"
-desired_capacity       = 1
-max_size               = 2
-min_size               = 1
+desired_capacity       = 2
+max_size               = 10
+min_size               = 2
 
 environment            = "dev"
 

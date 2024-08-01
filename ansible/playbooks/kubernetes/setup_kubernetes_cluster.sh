@@ -19,4 +19,4 @@ eval "$(ssh-agent -s)"
 ssh-add $PRIVATE_KEY_PATH
 
 # Run the Ansible playbook with the correct inventory file
-ansible-playbook -i ${INVENTORY_DIR} ${K8S_PLAYBOOK_DIR}/setup_kubernetes_cluster.yaml -v
+ansible-playbook -i ${INVENTORY_DIR} ${K8S_PLAYBOOK_DIR}/setup_kubernetes_cluster.yaml -vv

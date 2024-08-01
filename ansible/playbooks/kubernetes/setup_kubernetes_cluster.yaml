@@ -4,6 +4,7 @@
   become: yes
 
   tasks:
+
     - name: Get private IP using Ansible fact
       set_fact:
         master_private_ip: "{{ ansible_default_ipv4.address }}"
@@ -190,9 +191,13 @@
     - name: Pre-pull Kubernetes images
       command: kubeadm config images pull --kubernetes-version v1.30.2
  
+    - name: Print kubeadm init command
+      debug:
+        msg: "kubeadm init --apiserver-advertise-address={{ master_private_ip }} --apiserver-cert-extra-sans={{ master_private_ip }},{{ master_public_ip }} --pod-network-cidr=10.244.0.0/16 --node-name master --ignore-preflight-errors Swap"
 
     - name: Initialize Kubernetes cluster
-      command: kubeadm init --apiserver-advertise-address="{{ master_private_ip }}" --apiserver-cert-extra-sans="{{ master_private_ip }}" --pod-network-cidr="10.244.0.0/16" --node-name "master" --ignore-preflight-errors Swap
+      command: kubeadm init --apiserver-advertise-address="{{ master_private_ip }}" --apiserver-cert-extra-sans="{{ master_private_ip }},{{ master_public_ip }}" --pod-network-cidr="10.244.0.0/16" --node-name "master" --ignore-preflight-errors Swap
+      become: yes
       ignore_errors: yes
 
     - name: Configure kubectl for the master node

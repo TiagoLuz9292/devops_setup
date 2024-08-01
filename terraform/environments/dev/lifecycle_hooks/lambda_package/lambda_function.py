@@ -18,11 +18,29 @@ def lambda_handler(event, context):
     ec2_client = boto3.client('ec2')
     response = ec2_client.describe_instances(InstanceIds=[instance_id])
     private_ip = response['Reservations'][0]['Instances'][0]['PrivateIpAddress']
+    node_name = None
     
-    
-    # Drain the Kubernetes node
+    # Get the list of nodes
     try:
-        result = subprocess.run([kubectl_path, 'drain', private_ip, '--ignore-daemonsets', '--delete-local-data'], capture_output=True, text=True)
+        result = subprocess.run([kubectl_path, 'get', 'nodes', '-o', 'json'], capture_output=True, text=True)
+        if result.returncode != 0:
+            raise Exception(result.stderr)
+        
+        nodes = json.loads(result.stdout)
+        for node in nodes['items']:
+            if private_ip.replace('.', '-') in node['metadata']['name']:
+                node_name = node['metadata']['name']
+                break
+        if node_name is None:
+            raise Exception(f"Node with private IP {private_ip} not found.")
+        
+        # Drain the Kubernetes node
+        result = subprocess.run([kubectl_path, 'drain', node_name, '--ignore-daemonsets', '--delete-emptydir-data'], capture_output=True, text=True)
+        if result.returncode != 0:
+            raise Exception(result.stderr)
+        
+        # Delete the Kubernetes node
+        result = subprocess.run([kubectl_path, 'delete', 'node', node_name], capture_output=True, text=True)
         if result.returncode != 0:
             raise Exception(result.stderr)
         
