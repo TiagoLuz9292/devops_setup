@@ -8,6 +8,8 @@ fi
 
 ENVIRONMENT=$1
 
+echo "Running playbook with environment: $ENVIRONMENT"
+
 # Define the inventory directory and the playbook directory
 INVENTORY_DIR="/home/ec2-user/devops_setup/ansible/inventory/${ENVIRONMENT}_inventory"
 K8S_PLAYBOOK_DIR="/home/ec2-user/devops_setup/ansible/playbooks/kubernetes"
@@ -21,5 +23,6 @@ if [ -z "$MASTER_PRIVATE_IP" ]; then
   exit 1
 fi
 
-# Run the Ansible playbook with the extracted private IP
-ansible-playbook -i ${INVENTORY_DIR}/inventory ${K8S_PLAYBOOK_DIR}/setup_kubectl_auth.yaml --extra-vars "master_private_ip=${MASTER_PRIVATE_IP}" -v
+# Run the Ansible playbook with the extracted private IP and environment variable
+ansible-playbook -i ${INVENTORY_DIR}/inventory ${K8S_PLAYBOOK_DIR}/setup_kubectl_auth.yaml --extra-vars "master_private_ip=${MASTER_PRIVATE_IP} env=${ENVIRONMENT}" -v
+

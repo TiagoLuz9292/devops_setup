@@ -71,3 +71,16 @@ module "k8s_cluster" {
   subnet_ids            = [module.dev_vpc.subnet1_id, module.dev_vpc.subnet2_id]
   environment           = var.environment
 }
+
+
+
+module "cloudwatch_alarms" {
+  source                = "../../modules/cloudwatch_alarms"
+  asg_name              = module.k8s_cluster.asg_name
+  scale_out_policy_arn  = module.k8s_cluster.scale_out_policy_arn
+  scale_in_policy_arn   = module.k8s_cluster.scale_in_policy_arn
+  high_cpu_threshold    = var.high_cpu_threshold
+  low_cpu_threshold     = var.low_cpu_threshold
+  evaluation_periods    = var.evaluation_periods
+  period                = var.period
+}

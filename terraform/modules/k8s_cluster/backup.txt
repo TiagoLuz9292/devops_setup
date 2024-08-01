@@ -1,0 +1,7 @@
+# Retrieve the join command from SSM Parameter Store
+JOIN_COMMAND=$(aws ssm get-parameter --name "k8s-join-command" --with-decryption --query "Parameter.Value" --output text --region eu-north-1) >> $LOG_FILE 2>&1
+echo "Join command retrieved: $JOIN_COMMAND" >> $LOG_FILE 2>&1
+echo "Executing join command" >> $LOG_FILE 2>&1
+export JOIN_COMMAND
+eval sudo $JOIN_COMMAND --v=5 >> $LOG_FILE 2>&1
+echo "Worker setup script completed" >> $LOG_FILE 2>&1

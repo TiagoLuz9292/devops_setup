@@ -15,13 +15,13 @@ INVENTORY_DIR="/home/ec2-user/devops_setup/ansible/inventory/${ENVIRONMENT}_inve
 mkdir -p ${INVENTORY_DIR}
 
 # Fetch the private IP of the master node
-MASTER_PRIVATE_IP=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=K8s-Master-${ENVIRONMENT}" "Name=instance-state-name,Values=running" --query "Reservations[*].Instances[*].PrivateIpAddress" --output text)
+MASTER_PRIVATE_IP=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=k8s-master-${ENVIRONMENT}" "Name=instance-state-name,Values=running" --query "Reservations[*].Instances[*].PrivateIpAddress" --output text)
 
 # Fetch the private IP of the admin node
-ADMIN_PRIVATE_IP=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=admin-${ENVIRONMENT}" "Name=instance-state-name,Values=running" --query "Reservations[*].Instances[*].PrivateIpAddress" --output text)
+ADMIN_PRIVATE_IP=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=admin-1" "Name=instance-state-name,Values=running" --query "Reservations[*].Instances[*].PrivateIpAddress" --output text)
 
 # Fetch the private IPs of the worker nodes
-WORKER_PRIVATE_IPS=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=K8s-Worker-${ENVIRONMENT}" "Name=instance-state-name,Values=running" --query "Reservations[*].Instances[*].PrivateIpAddress" --output text)
+WORKER_PRIVATE_IPS=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=k8s-worker-${ENVIRONMENT}" "Name=instance-state-name,Values=running" --query "Reservations[*].Instances[*].PrivateIpAddress" --output text)
 
 # Path to the inventory file
 INVENTORY_FILE="${INVENTORY_DIR}/inventory"

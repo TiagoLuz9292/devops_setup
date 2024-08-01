@@ -13,12 +13,17 @@ environment_tags       = { Environment = "dev" }
 master_ami             = "ami-052387465d846f3fc"
 instance_type          = "t3.medium"
 key_name               = "devOps_training"
-master_instance_name   = "k8s-master"
+master_instance_name   = "k8s-master-dev"
 worker_ami             = "ami-052387465d846f3fc"
-worker_instance_name   = "k8s-worker"
+worker_instance_name   = "k8s-worker-dev"
 worker_user_data       = "your-user-data"
 desired_capacity       = 1
-max_size               = 4
+max_size               = 2
 min_size               = 1
 
 environment            = "dev"
+
+high_cpu_threshold     = 50
+low_cpu_threshold      = 30
+evaluation_periods     = 1
+period                 = 120

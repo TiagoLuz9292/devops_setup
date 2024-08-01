@@ -22,3 +22,23 @@ variable "max_size" {}
 variable "min_size" {}
 
 variable "environment" {}
+
+variable "high_cpu_threshold" {
+  description = "High CPU utilization threshold"
+  type        = number
+}
+
+variable "low_cpu_threshold" {
+  description = "Low CPU utilization threshold"
+  type        = number
+}
+
+variable "evaluation_periods" {
+  description = "Evaluation periods for the alarms"
+  type        = number
+}
+
+variable "period" {
+  description = "Period for the alarms"
+  type        = number
+}

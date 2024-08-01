@@ -15,4 +15,4 @@ spec:
       containers:
       - name: stress
         image: progrium/stress
-        args: ["-c", "2", "-t", "400s"] # 4 CPU cores, 60 seconds
+        args: ["-c", "2", "-t", "400s"] # 2 CPU cores, 60 seconds

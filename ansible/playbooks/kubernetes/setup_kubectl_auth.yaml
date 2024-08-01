@@ -2,7 +2,13 @@
 - name: Setup Jenkins service account on Kubernetes
   hosts: master
   become: true
+  vars:
+    env: "{{ env }}"
   tasks:
+    - name: Print environment variable
+      debug:
+        msg: "Environment is {{ env }}"
+
     - name: Get private IP using curl
       command: curl -s http://169.254.169.254/latest/meta-data/local-ipv4
       register: private_ip
@@ -122,12 +128,31 @@
       delegate_to: localhost
       become: true
       ansible.builtin.command:
-        cmd: scp -o StrictHostKeyChecking=no -i /home/ec2-user/.ssh/my-key-pair ec2-user@{{ hostvars['master']['global_master_private_ip'] }}:/tmp/kubeconfig-jenkins.yaml /home/ec2-user/.ssh/kubeconfig-jenkins.yaml
+        cmd: scp -o StrictHostKeyChecking=no -i /home/ec2-user/.ssh/my-key-pair ec2-user@{{ hostvars['master']['global_master_private_ip'] }}:/tmp/kubeconfig-jenkins.yaml /home/ec2-user/.ssh/kubeconfig-{{ env }}.yaml
 
     - name: Export KUBECONFIG environment variable
       shell: |
-        if ! grep -Fxq "export KUBECONFIG=/home/ec2-user/.ssh/kubeconfig-jenkins.yaml" ~/.bashrc; then
-          echo "export KUBECONFIG=/home/ec2-user/.ssh/kubeconfig-jenkins.yaml" >> ~/.bashrc
+        if ! grep -Fxq "export KUBECONFIG=/home/ec2-user/.ssh/kubeconfig-{{ env }}.yaml" ~/.bashrc; then
+          echo "export KUBECONFIG=/home/ec2-user/.ssh/kubeconfig-{{ env }}.yaml" >> ~/.bashrc
         fi
       args:
         executable: /bin/bash
+
+    - name: Copy kubeconfig file to lambda package directory
+      copy:
+        src: /home/ec2-user/.ssh/kubeconfig-{{ env }}.yaml
+        dest: /home/ec2-user/devops_setup/terraform/environments/dev/lifecycle_hooks/lambda_package/kubeconfig.yaml
+      become: true
+
+    - name: Create the Lambda package
+      shell: |
+        cd /home/ec2-user/devops_setup/terraform/environments/dev/lifecycle_hooks/lambda_package
+        zip lambda_function.zip lambda_function.py kubectl kubeconfig.yaml
+      args:
+        creates: /home/ec2-user/devops_setup/terraform/environments/dev/lifecycle_hooks/lambda_package/lambda_function.zip
+      become: true
+
+    - name: Move the Lambda package zip to the parent directory
+      shell: |
+        mv /home/ec2-user/devops_setup/terraform/environments/dev/lifecycle_hooks/lambda_package/lambda_function.zip /home/ec2-user/devops_setup/terraform/environments/dev/lifecycle_hooks
+      become: true  
