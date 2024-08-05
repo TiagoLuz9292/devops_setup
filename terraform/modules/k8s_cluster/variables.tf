@@ -16,3 +16,8 @@ variable "subnet_ids" {}
 variable "vpc_id" {}
 
 variable "environment" {}
+
+variable "target_group_arns" {
+  description = "List of target group ARNs to associate with the ASG"
+  type        = list(string)
+}

@@ -1,4 +1,5 @@
 variable "vpc_cidr" {}
+variable "vpc_id" {}
 variable "subnet_cidr1" {}
 variable "subnet_cidr2" {}
 variable "availability_zone1" {}
@@ -8,4 +9,6 @@ variable "subnet_name1" {}
 variable "subnet_name2" {}
 variable "igw_name" {}
 variable "route_table_name" {}
+variable "environment" {}
 variable "environment_tags" {}
+variable "subnet_ids" {}

@@ -16,7 +16,10 @@ module "dev_vpc" {
   subnet_name2         = var.subnet_name2
   igw_name             = var.igw_name
   route_table_name     = var.route_table_name
-  environment_tags     = var.environment_tags
+  environment          = var.environment
+  vpc_id               = module.dev_vpc.vpc_id
+  environment_tags      = var.environment_tags
+  subnet_ids            = [module.dev_vpc.subnet1_id, module.dev_vpc.subnet2_id]
 }
 
 data "terraform_remote_state" "iam" {
@@ -70,6 +73,7 @@ module "k8s_cluster" {
   min_size              = var.min_size
   subnet_ids            = [module.dev_vpc.subnet1_id, module.dev_vpc.subnet2_id]
   environment           = var.environment
+  target_group_arns     = [module.elb.target_group_arn]
 }
 
 
@@ -84,3 +88,5 @@ module "cloudwatch_alarms" {
   evaluation_periods    = var.evaluation_periods
   period                = var.period
 }
+
+

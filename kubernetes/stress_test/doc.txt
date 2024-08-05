@@ -7,3 +7,9 @@ kubeadm init --apiserver-advertise-address="10.1.1.221" --apiserver-cert-extra-s
 
 
 openssl x509 -in /etc/kubernetes/pki/apiserver.crt -text -noout | grep -A 1 "X509v3 Subject Alternative Name"
+
+
+resource "aws_autoscaling_attachment" "asg_attachment" {
+  autoscaling_group_name = ""
+  alb_target_group_arn   = aws_lb_target_group.this.arn
+}

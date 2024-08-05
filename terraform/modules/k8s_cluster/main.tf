@@ -164,7 +164,7 @@ resource "aws_autoscaling_group" "k8s_asg" {
   max_size             = var.max_size
   min_size             = var.min_size
   vpc_zone_identifier  = var.subnet_ids
-   target_group_arns    = [aws_lb_target_group.k8s_target_group.arn]
+   target_group_arns   = var.target_group_arns
 
   tag {
     key                 = "Name"

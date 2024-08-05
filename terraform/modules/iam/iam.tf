@@ -96,9 +96,6 @@ resource "aws_iam_instance_profile" "admin_instance_profile" {
 
 
 
-
-
-
 resource "aws_iam_policy" "worker_policy" {
   name        = "worker_policy"
   description = "Policy for worker nodes to access SSM and EC2 describe instances"
@@ -108,15 +105,20 @@ resource "aws_iam_policy" "worker_policy" {
       {
         Effect   = "Allow"
         Action   = [
-          "ssm:GetParameter",
-          "ssm:PutParameter",
-          "ec2:DescribeInstances"
+          "ec2:Describe*",
+          "elasticloadbalancing:*",
+          "iam:ListRoles",
+          "iam:PassRole",
+          "cloudwatch:*",
+          "logs:*",
+          "autoscaling:Describe*"
         ]
         Resource = "*"
       }
     ]
   })
 }
+
 resource "aws_iam_role" "master_role" {
   name               = "master-role"
   assume_role_policy = jsonencode({
