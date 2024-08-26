@@ -27,9 +27,7 @@ The infrastructure includes:
 - **IAM Roles and Policies**: For managing permissions and access controls.
 - **Monitoring and Logging**: Using Grafana, Loki, Promtail, and Prometheus.
 
-## Architecture Diagram
 
-*Include an architecture diagram here illustrating the setup.*
 
 ## Setup and Installation
 
